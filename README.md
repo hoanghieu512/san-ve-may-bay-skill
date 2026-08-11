@@ -6,6 +6,31 @@ xuất Excel 3 sheet (Data / Summary / Log). Không bịa giá — ô nào khôn
 
 Repo này là **nguồn của skill**, không phải nơi chạy skill.
 
+## Version
+
+Phiên bản hiện tại: **v1.0.0** (11/08/2026)
+
+Số version nằm ở hai chỗ trong [`SKILL.md`](skill/ve-may-bay-noi-dia/SKILL.md) — `metadata.version`
+ở frontmatter và một dòng `**vX.Y.Z**` ngay đầu body. `build-skill.sh` từ chối đóng gói nếu hai
+chỗ lệch nhau.
+
+**Kiểm tra bản đang nạp có mới nhất chưa:** hỏi Claude "skill vé máy bay đang là version mấy",
+rồi so với tag mới nhất ở repo:
+
+```bash
+git ls-remote --tags origin | tail -1
+```
+
+Lệch → bản đang nạp đã cũ: `./build-skill.sh` rồi Save đè gói `.skill` mới. Nếu cài bằng
+symlink (xem dưới) thì không bao giờ lệch.
+
+Quy ước tăng số: sửa quy trình quét / đổi format Excel → tăng **minor**; vá bug, sửa đường dẫn,
+làm rõ văn bản → tăng **patch**. Mỗi lần tăng nhớ `git tag vX.Y.Z && git push --tags`.
+
+| Version | Ngày | Thay đổi |
+|---|---|---|
+| 1.0.0 | 11/08/2026 | Mốc đầu tiên có đánh số. Gồm đường Playwright cho Traveloka, quét ngày qua API VNA `air-best-price`, và bản vá đường dò `recalc.py` chạy được cả Cowork lẫn Claude Code local |
+
 ## Cấu trúc
 
 | Đường dẫn | Là gì | Có push lên GitHub |
