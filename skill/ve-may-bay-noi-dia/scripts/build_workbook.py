@@ -48,16 +48,23 @@ def build(cp, out):
     hdr += ["Giá — " + s for s in SRC]
     c_src0, c_src1 = 7, 6 + n                 # dải cột giá
     c_chot = c_src1 + 1
-    hdr.append("Giá chốt")
-    c_diff = 0
+    hdr.append("Giá chốt (nguồn ưu tiên)")
+    c_min = c_diff = 0
     if n >= 2:
-        c_diff = c_chot + 1
+        c_min = c_chot + 1
+        hdr.append("Giá thấp nhất (mọi nguồn)")
+        c_diff = c_min + 1
         hdr.append("Chênh lệch max %")
     c_link = len(hdr) + 1; hdr.append("Link nguồn của Giá chốt")
     c_ts   = len(hdr) + 1; hdr.append("Thời điểm thu thập")
     NC = len(hdr)
     HDR_C = ["Loại phương án", "Chuyến đi (số hiệu + giờ)", "Giá đi",
-             "Chuyến về (số hiệu + giờ)", "Giá về", "Tổng khứ hồi", "Ghi chú"]
+             "Chuyến về (số hiệu + giờ)", "Giá về", "Tổng theo Giá chốt"]
+    if c_min:
+        HDR_C.append("Tổng theo giá thấp nhất")
+    HDR_C.append("Ghi chú")
+    NC_C = len(HDR_C)
+    c_tmin, c_ghi = (7, 8) if c_min else (0, 7)
 
     wb = Workbook(); ws = wb.active; ws.title = "Data"
     ws['A1'] = "%s — %s, %s, %s" % (meta['chang'], meta['khach'], meta['hang_ve'], meta['loai'])
@@ -111,6 +118,10 @@ def build(cp, out):
                     col = L(7 + k)
                     expr = 'IF(ISNUMBER({c}{r}),{c}{r},{e})'.format(c=col, r=r, e=expr)
                 cc = ws.cell(r, c_chot, '=' + expr); cc.number_format = MONEY; cc.font = F_BB
+                if c_min:
+                    cc = ws.cell(r, c_min, '=IF(COUNT({a}{r}:{b}{r})=0,"{na}",MIN({a}{r}:{b}{r}))'
+                                 .format(a=L(c_src0), b=L(c_src1), r=r, na=NA))
+                    cc.number_format = MONEY; cc.font = F_B
                 if c_diff:
                     cc = ws.cell(r, c_diff, '=IFERROR((MAX({a}{r}:{b}{r})-MIN({a}{r}:{b}{r}))/MIN({a}{r}:{b}{r}),"")'
                                  .format(a=L(c_src0), b=L(c_src1), r=r))
@@ -128,7 +139,7 @@ def build(cp, out):
 
         # ---- Block C ----
         ws.cell(r, 1, 'BLOCK C — Phương án ghép').font = F_HDR
-        for c in range(1, 8): ws.cell(r, c).fill = FI_BLK
+        for c in range(1, NC_C + 1): ws.cell(r, c).fill = FI_BLK
         r += 1
         for i, h in enumerate(HDR_C, 1):
             c = ws.cell(r, i, h); c.font = F_HDR; c.fill = FI_HDR; c.border = BD; c.alignment = CEN
@@ -167,8 +178,11 @@ def build(cp, out):
             for col, X in ((3, A), (5, B)):
                 cc = ws.cell(r, col, '=%s%d' % (L(c_chot), X[0])); cc.number_format = MONEY; cc.font = F_B
             cc = ws.cell(r, 6, '=C{0}+E{0}'.format(r)); cc.number_format = MONEY; cc.font = F_BB
-            ws.cell(r, 7, note).font = F_B
-            for c in range(1, 8): ws.cell(r, c).border = BD
+            if c_tmin:
+                cc = ws.cell(r, c_tmin, '={m}{a}+{m}{b}'.format(m=L(c_min), a=A[0], b=B[0]))
+                cc.number_format = MONEY; cc.font = F_B
+            ws.cell(r, c_ghi, note).font = F_B
+            for c in range(1, NC_C + 1): ws.cell(r, c).border = BD
             if name == "Rẻ nhất":
                 summary.append(dict(P=P, row=r, A=A, B=B))
             r += 1
@@ -188,17 +202,22 @@ def build(cp, out):
                 FormulaRule(formula=['AND(ISNUMBER(${c}{s}),${c}{s}>={t})'
                                      .format(c=L(c_diff), s=s, t=NGUONG_DIEU_TRA)],
                             fill=FI_WARN, stopIfTrue=False))
-    ws.conditional_formatting.add("A4:G%d" % r,
+    ws.conditional_formatting.add("A4:%s%d" % (L(NC_C), r),
         FormulaRule(formula=['$A4="Rẻ nhất"'], fill=FI_YEL, stopIfTrue=False))
     ws.freeze_panes = "A4"
     if first_hdr: ws.auto_filter.ref = "A%d:%s%d" % (first_hdr, L(NC), r)
-    for i, w in enumerate([10, 12, 14, 20, 13, 13] + [16] * n + [15] + ([14] if c_diff else []) + [42, 18], 1):
+    for i, w in enumerate([10, 12, 14, 20, 13, 13] + [16] * n + [18]
+                          + ([18, 14] if c_diff else []) + [42, 18], 1):
         ws.column_dimensions[L(i)].width = w
 
     # ---------------- Summary ----------------
     s2 = wb.create_sheet("Summary")
-    for i, h in enumerate(["Cặp ngày", "Thứ (đi → về)", "Tổng vé rẻ nhất", "Hãng chiều đi", "Giờ đi",
-                           "Hãng chiều về", "Giờ về", "Nguồn", "Link nguồn"], 1):
+    H2 = ["Cặp ngày", "Thứ (đi → về)", "Tổng theo Giá chốt"]
+    if c_min: H2.append("Tổng theo giá thấp nhất")
+    H2 += ["Hãng chiều đi", "Giờ đi", "Hãng chiều về", "Giờ về", "Nguồn của Giá chốt", "Link nguồn"]
+    NC2 = len(H2)
+    o = 1 if c_min else 0                     # dịch cột sau khi chèn cột giá thấp nhất
+    for i, h in enumerate(H2, 1):
         c = s2.cell(1, i, h); c.font = F_HDR; c.fill = FI_HDR; c.border = BD; c.alignment = CEN
     rr = 2
     for it in sorted(summary, key=lambda x: x['A'][1] + x['B'][1]):
@@ -207,23 +226,30 @@ def build(cp, out):
         s2.cell(rr, 1, "%s (%s → %s)" % (P['ten'], P['ngay_di'], P['ngay_ve'])).font = F_B
         s2.cell(rr, 2, P.get('thu', '')).font = F_B
         cc = s2.cell(rr, 3, "=Data!F%d" % it['row']); cc.number_format = MONEY; cc.font = F_BB
-        s2.cell(rr, 4, "%s (%s)" % (A[2]['hang'], A[2].get('sh') or '—')).font = F_B
-        cc = s2.cell(rr, 5, hhmm(A[2]['dep'])); cc.number_format = 'hh:mm'; cc.font = F_B
-        s2.cell(rr, 6, "%s (%s)" % (B[2]['hang'], B[2].get('sh') or '—')).font = F_B
-        cc = s2.cell(rr, 7, hhmm(B[2]['dep'])); cc.number_format = 'hh:mm'; cc.font = F_B
-        s2.cell(rr, 8, src).font = F_B
+        if c_min:
+            cc = s2.cell(rr, 4, "=Data!%s%d" % (L(c_tmin), it['row']))
+            cc.number_format = MONEY; cc.font = F_B
+        s2.cell(rr, 4 + o, "%s (%s)" % (A[2]['hang'], A[2].get('sh') or '—')).font = F_B
+        cc = s2.cell(rr, 5 + o, hhmm(A[2]['dep'])); cc.number_format = 'hh:mm'; cc.font = F_B
+        s2.cell(rr, 6 + o, "%s (%s)" % (B[2]['hang'], B[2].get('sh') or '—')).font = F_B
+        cc = s2.cell(rr, 7 + o, hhmm(B[2]['dep'])); cc.number_format = 'hh:mm'; cc.font = F_B
+        s2.cell(rr, 8 + o, src).font = F_B
         u = P['di'].get('link', {}).get(src, '')
-        lk = s2.cell(rr, 9, u or NA)
+        lk = s2.cell(rr, 9 + o, u or NA)
         if u: lk.hyperlink = u; lk.font = F_LINK
         else: lk.font = F_B
-        for c in range(1, 10): s2.cell(rr, c).border = BD
+        for c in range(1, NC2 + 1): s2.cell(rr, c).border = BD
         rr += 1
     if rr > 2:
-        s2.conditional_formatting.add("A2:I%d" % (rr - 1),
+        s2.conditional_formatting.add("A2:%s%d" % (L(NC2), rr - 1),
             FormulaRule(formula=['$C2=MIN($C$2:$C$%d)' % (rr - 1)], fill=FI_YEL, stopIfTrue=False))
-        s2.auto_filter.ref = "A1:I%d" % (rr - 1)
+        s2.auto_filter.ref = "A1:%s%d" % (L(NC2), rr - 1)
     s2.freeze_panes = "A2"
-    for i, w in enumerate([26, 16, 18, 24, 10, 24, 10, 16, 42], 1): s2.column_dimensions[L(i)].width = w
+    s2.cell(rr + 1, 1, "Giá chốt = giá của nguồn đầu tiên có số theo thứ tự ưu tiên (%s). "
+                       "Giá thấp nhất = số nhỏ nhất giữa các nguồn — thường là số mua được thật, "
+                       "nhưng phải kiểm nguồn đó có bán đúng hạng vé không." % ", ".join(SRC)).font = F_NOTE
+    for i, w in enumerate([26, 16, 20] + ([20] if c_min else []) + [24, 10, 24, 10, 18, 42], 1):
+        s2.column_dimensions[L(i)].width = w
 
     # ---------------- Log ----------------
     s3 = wb.create_sheet("Log")

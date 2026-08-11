@@ -2,14 +2,14 @@
 name: ve-may-bay-noi-dia
 description: Thu thập và đối chiếu giá vé máy bay nội địa Việt Nam từ nhiều nguồn, rồi xuất file Excel so sánh. Use when người dùng muốn so sánh giá vé, tìm vé rẻ, quét giá nhiều ngày bay, dò giá khứ hồi, hoặc lập bảng so sánh chuyến bay — ví dụ "so giá vé SGN đi Đà Nẵng tháng 8", "tìm vé rẻ nhất HAN-SGN mấy cuối tuần tới", "quét giá vé máy bay giúp huynh", "compare flight prices Vietnam domestic", "check vé Tết". KHÔNG dùng cho chặng quốc tế (logic nối chuyến và hạng vé khác hẳn).
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   updated: "2026-08-11"
   source: "https://github.com/hoanghieu512/san-ve-may-bay-skill"
 ---
 
 # Thu thập & so sánh giá vé nội địa VN
 
-**v1.1.0** · cập nhật 11/08/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
+**v1.2.0** · cập nhật 11/08/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
 
 Quét giá thật từ Google Flights / Traveloka bằng Claude in Chrome, đối chiếu chéo, xuất Excel 3 sheet.
 
@@ -138,8 +138,12 @@ Chuỗi đầy đủ: **extract → `merge_sources.py` → `build_workbook.py` �
 
 `scripts/build_workbook.py <checkpoint.json> <output.xlsx>` → 3 sheet:
 
-- **Data** — nhóm theo cặp ngày. Block A (chiều đi), Block B (chiều về), Block C (phương án ghép: "Rẻ nhất" và "Cùng hãng rẻ nhất"). Cột giá sinh động theo số nguồn thực quét; `Chênh lệch max %` chỉ xuất hiện khi có ≥2 nguồn.
-- **Summary** — mỗi cặp một dòng, sắp xếp tổng tăng dần.
+- **Data** — nhóm theo cặp ngày. Block A (chiều đi), Block B (chiều về), Block C (phương án ghép: "Rẻ nhất" và "Cùng hãng rẻ nhất"). Cột giá sinh động theo số nguồn thực quét; `Giá thấp nhất (mọi nguồn)` và `Chênh lệch max %` chỉ xuất hiện khi có ≥2 nguồn.
+- **Summary** — mỗi cặp một dòng, sắp xếp theo `Tổng theo Giá chốt` tăng dần.
+
+**Hai cột giá, đừng nhầm.** `Giá chốt (nguồn ưu tiên)` = giá của nguồn đầu tiên có số theo `meta.nguon` — **không phải** giá thấp nhất. `Giá thấp nhất (mọi nguồn)` mới là số nhỏ nhất. Việc chọn chuyến và sắp xếp Summary chạy theo `Giá chốt` để mọi con số cùng một nguồn, so sánh mới có nghĩa; cột giá thấp nhất đặt cạnh để thấy khoảng cách.
+
+Đo trên chặng SGN-DAD 09/08/2026: hai cách chênh ~1%, và **16/16 chiều hai nguồn chọn đúng cùng một chuyến rẻ nhất** — nên cách chọn không đổi khuyến nghị, chỉ đổi con số hiển thị. Khi báo cáo ở §9, nói rõ đang trích cột nào. Đừng gộp hai cột thành một câu "giá rẻ nhất là X".
 - **Log** — bắt buộc. Đây là bằng chứng phân biệt "ô trống vì hết chuyến" với "ô trống vì bị chặn".
 
 Màu trong sheet `Data`: **vàng** = rẻ nhất trong chiều đó; **cam** = hai nguồn lệch ≥25%, số đáng ngờ. Ô cam không phải giá để tiêu tiền — đọc `Log` trước.

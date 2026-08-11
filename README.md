@@ -8,7 +8,7 @@ Repo này là **nguồn của skill**, không phải nơi chạy skill.
 
 ## Version
 
-Phiên bản hiện tại: **v1.1.0** (11/08/2026)
+Phiên bản hiện tại: **v1.2.0** (11/08/2026)
 
 Số version nằm ở hai chỗ trong [`SKILL.md`](skill/ve-may-bay-noi-dia/SKILL.md) — `metadata.version`
 ở frontmatter và một dòng `**vX.Y.Z**` ngay đầu body. `build-skill.sh` từ chối đóng gói nếu hai
@@ -29,6 +29,7 @@ làm rõ văn bản → tăng **patch**. Mỗi lần tăng nhớ `git tag vX.Y.Z
 
 | Version | Ngày | Thay đổi |
 |---|---|---|
+| 1.2.0 | 11/08/2026 | Tách bạch hai khái niệm giá: `Giá chốt` đổi tên thành `Giá chốt (nguồn ưu tiên)`, thêm cột `Giá thấp nhất (mọi nguồn)` ở Data và Summary. Cột Summary `Tổng vé rẻ nhất` (sai tên — nó không phải giá rẻ nhất) đổi thành `Tổng theo Giá chốt` |
 | 1.1.0 | 11/08/2026 | Thêm `scripts/merge_sources.py` — mắt xích extract→build trước đây phải viết tay mỗi lần chạy. Thêm ngưỡng bắt buộc điều tra khi hai nguồn lệch ≥25%: tô cam trong workbook, cảnh báo ra stderr, thành luật ở §6 |
 | 1.0.1 | 11/08/2026 | Sửa hai tham chiếu chéo sai: `vna-date-scan.md` tự gọi là "bước 0.5" (đúng ra là Bước 0 / §3), và `build_workbook.py` trỏ sang §7 thay vì §8 |
 | 1.0.0 | 11/08/2026 | Mốc đầu tiên có đánh số. Gồm đường Playwright cho Traveloka, quét ngày qua API VNA `air-best-price`, và bản vá đường dò `recalc.py` chạy được cả Cowork lẫn Claude Code local |
