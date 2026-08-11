@@ -6,7 +6,7 @@
 
 Số cột giá sinh động theo meta.nguon (cũng là thứ tự ưu tiên của Giá chốt).
 Cột 'Chênh lệch max %' chỉ xuất hiện khi có >= 2 nguồn.
-Sau khi chạy: recalc.py, rồi đối chiếu độc lập — xem SKILL.md §7.
+Sau khi chạy: recalc.py, rồi đối chiếu độc lập — xem SKILL.md §8.
 """
 import json, sys, datetime
 from openpyxl import Workbook

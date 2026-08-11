@@ -1,7 +1,7 @@
 # Quét ngày bằng API VNA — chọn cặp ngày trước khi quét chuyến
 
-Kiểm chứng 09/08/2026. Đây là **bước 0.5**: chạy trước khi ước lượng ngân sách, để biết
-cặp ngày nào đáng quét thay vì đoán.
+Kiểm chứng 09/08/2026. Đây là **Bước 0** (SKILL.md §3): chạy trước khi ước lượng ngân sách
+(§4), để biết cặp ngày nào đáng quét thay vì đoán.
 
 ## Endpoint
 
