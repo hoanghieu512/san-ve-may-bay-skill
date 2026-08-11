@@ -15,6 +15,9 @@ from openpyxl.formatting.rule import FormulaRule
 from openpyxl.utils import get_column_letter as L
 
 NA, MONEY, AR = "Không khả dụng", '#,##0 "₫"', 'Arial'
+# Lệch >= mức này giữa hai nguồn cho cùng một chuyến -> tô cam. Trùng với
+# NGUONG_DIEU_TRA của merge_sources.py và ngưỡng bắt buộc điều tra ở SKILL.md §6.
+NGUONG_DIEU_TRA = 0.25
 F_TITLE = Font(name=AR, size=14, bold=True)
 F_GRP   = Font(name=AR, size=11, bold=True, color='FFFFFF')
 F_HDR   = Font(name=AR, size=10, bold=True)
@@ -26,6 +29,7 @@ FI_GRP  = PatternFill('solid', fgColor='1F4E79')
 FI_HDR  = PatternFill('solid', fgColor='DDEBF7')
 FI_BLK  = PatternFill('solid', fgColor='FCE4D6')
 FI_YEL  = PatternFill('solid', fgColor='FFF200')
+FI_WARN = PatternFill('solid', fgColor='FFC000')
 _t = Side(style='thin', color='BFBFBF')
 BD = Border(left=_t, right=_t, top=_t, bottom=_t)
 CEN = Alignment(horizontal='center', vertical='center', wrap_text=True)
@@ -59,9 +63,12 @@ def build(cp, out):
     ws['A1'] = "%s — %s, %s, %s" % (meta['chang'], meta['khach'], meta['hang_ve'], meta['loai'])
     ws['A1'].font = F_TITLE
     ws['A2'] = ("Thời điểm thu thập: %s · Nguồn: %s · Khung giờ đi %s, về %s. "
-                "Giá vé thay đổi liên tục — bảng này là ảnh chụp một thời điểm, không phải giá bảo đảm."
+                "Giá vé thay đổi liên tục — bảng này là ảnh chụp một thời điểm, không phải giá bảo đảm. "
+                "Giá chốt = giá của nguồn đầu tiên có số theo thứ tự ưu tiên, KHÔNG phải giá thấp nhất. "
+                "Ô vàng = rẻ nhất trong chiều. Ô cam = hai nguồn lệch ≥%d%%, số đáng ngờ — đọc sheet Log trước khi tin."
                 % (meta['thu_thap'], ", ".join(SRC),
-                   meta.get('khung_di', 'không lọc'), meta.get('khung_ve', 'không lọc')))
+                   meta.get('khung_di', 'không lọc'), meta.get('khung_ve', 'không lọc'),
+                   NGUONG_DIEU_TRA * 100))
     ws['A2'].font = F_NOTE
 
     r, first_hdr, cf, summary = 4, None, [], []
@@ -173,6 +180,14 @@ def build(cp, out):
             "{c}{s}:{c}{e}".format(c=L(c_chot), s=s, e=e),
             FormulaRule(formula=['AND(ISNUMBER(${c}{s}),${c}{s}=MIN(${c}${s}:${c}${e}))'
                                  .format(c=L(c_chot), s=s, e=e)], fill=FI_YEL, stopIfTrue=False))
+        if c_diff:
+            # Lệch lớn giữa hai nguồn = dữ liệu đáng ngờ, không phải giá đáng tin.
+            # Tô cả dải giá + Giá chốt của dòng đó để không đọc nhầm thành giá thật.
+            ws.conditional_formatting.add(
+                "{a}{s}:{d}{e}".format(a=L(c_src0), d=L(c_diff), s=s, e=e),
+                FormulaRule(formula=['AND(ISNUMBER(${c}{s}),${c}{s}>={t})'
+                                     .format(c=L(c_diff), s=s, t=NGUONG_DIEU_TRA)],
+                            fill=FI_WARN, stopIfTrue=False))
     ws.conditional_formatting.add("A4:G%d" % r,
         FormulaRule(formula=['$A4="Rẻ nhất"'], fill=FI_YEL, stopIfTrue=False))
     ws.freeze_panes = "A4"
@@ -228,10 +243,22 @@ def build(cp, out):
     nf = sum(len(P[l]['chuyen']) for P in cp['caps'] for l in ('di', 've'))
     have = sum(1 for P in cp['caps'] for l in ('di', 've') for f in P[l]['chuyen']
                for s in SRC if f.get('gia', {}).get(s) is not None)
+    canh_bao = 0
+    if len(SRC) >= 2:
+        for P in cp['caps']:
+            for l in ('di', 've'):
+                for f in P[l]['chuyen']:
+                    v = [x for x in f.get('gia', {}).values() if x is not None]
+                    if len(v) >= 2 and max(v) / min(v) - 1 >= NGUONG_DIEU_TRA:
+                        canh_bao += 1
     print(json.dumps({"file": out, "chuyen": nf, "o_co_gia": have,
                       "o_tong": nf * len(SRC),
-                      "phu_%": round(100.0 * have / max(1, nf * len(SRC)), 1)},
+                      "phu_%": round(100.0 * have / max(1, nf * len(SRC)), 1),
+                      "can_dieu_tra": canh_bao},
                      ensure_ascii=False))
+    if canh_bao:
+        print("CẢNH BÁO: %d chuyến lệch >=%d%% giữa các nguồn — SKILL.md §6 bắt buộc điều tra "
+              "và ghi Log trước khi giao file." % (canh_bao, NGUONG_DIEU_TRA * 100), file=sys.stderr)
 
 
 if __name__ == '__main__':

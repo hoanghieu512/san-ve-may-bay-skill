@@ -2,14 +2,14 @@
 name: ve-may-bay-noi-dia
 description: Thu thập và đối chiếu giá vé máy bay nội địa Việt Nam từ nhiều nguồn, rồi xuất file Excel so sánh. Use when người dùng muốn so sánh giá vé, tìm vé rẻ, quét giá nhiều ngày bay, dò giá khứ hồi, hoặc lập bảng so sánh chuyến bay — ví dụ "so giá vé SGN đi Đà Nẵng tháng 8", "tìm vé rẻ nhất HAN-SGN mấy cuối tuần tới", "quét giá vé máy bay giúp huynh", "compare flight prices Vietnam domestic", "check vé Tết". KHÔNG dùng cho chặng quốc tế (logic nối chuyến và hạng vé khác hẳn).
 metadata:
-  version: "1.0.1"
+  version: "1.1.0"
   updated: "2026-08-11"
   source: "https://github.com/hoanghieu512/san-ve-may-bay-skill"
 ---
 
 # Thu thập & so sánh giá vé nội địa VN
 
-**v1.0.1** · cập nhật 11/08/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
+**v1.1.0** · cập nhật 11/08/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
 
 Quét giá thật từ Google Flights / Traveloka bằng Claude in Chrome, đối chiếu chéo, xuất Excel 3 sheet.
 
@@ -98,9 +98,25 @@ Chế độ khứ hồi của Google Flights trả về *tổng* khứ hồi khi
 
 Thứ tự quét: **tự do**. Cross-check hợp lệ miễn hai nguồn cách nhau dưới ~2 giờ. Thực nghiệm trên chặng nội địa: quét hết một nguồn rồi sang nguồn kia, cách nhau ~40 phút, lệch chỉ 0,2–2,2%. Quét theo nguồn rẻ hơn vì tái dùng được extractor.
 
-Sau **mỗi chặng**: chạy sanity check (số kết quả thô và số hãng — xem `playwright-path.md`), ghi vào checkpoint JSON (schema ở `references/checkpoint-schema.md`), báo tiến độ một dòng. Không giữ dữ liệu trong đầu.
+Sau **mỗi chặng**: chạy sanity check (số kết quả thô và số hãng — xem `playwright-path.md`), ghi JSON thô ra file, báo tiến độ một dòng. Không giữ dữ liệu trong đầu.
 
 **Không bao giờ chấp nhận một chặng có ít chuyến bất thường mà không điều tra.** Cả hai công cụ đều có thể trả dữ liệu thiếu một cách im lặng: Chrome vì danh sách virtualized chưa nạp hết, Playwright vì body bị cắt khi navigate quá sớm. Ít chuyến có thể là thật, nhưng phải xác minh chứ không mặc định.
+
+### Ghép nguồn — đừng viết lại bằng tay
+
+Quét xong thì **dùng `scripts/merge_sources.py`**, đừng tự viết code ghép cho từng lần chạy. Nó nhận một `job.json` mô tả chặng và cặp ngày, trả về checkpoint đúng schema, tự chuẩn hoá tên hãng và tự sinh các dòng `Log` bắt buộc. Đọc `references/merge-sources.md`.
+
+```bash
+python3 scripts/merge_sources.py job.json checkpoint.json
+```
+
+### Ngưỡng bắt buộc điều tra — không phải gợi ý
+
+**Hai nguồn lệch ≥25% cho cùng một chuyến → phải điều tra trước khi build workbook.** Cả `merge_sources.py` lẫn `build_workbook.py` đều đếm và in cảnh báo ra stderr; workbook tô cam những dòng đó.
+
+Không được bỏ qua, và cũng không được sửa/lọc số. Việc phải làm: mở lại nguồn cao hơn, xem nó đang bán hạng vé nào, rồi ghi kết luận vào `Log`. Nếu không xác minh được thì ghi thẳng là chưa xác minh được.
+
+Ví dụ đã gặp (09/08/2026): Sun PhuQuoc Airways lệch 78–123% ở mọi chặng vì Google Flights chỉ truy cập được hạng vé đắt của hãng này. **Điều đó không đổi chuyến rẻ nhất** — đã kiểm chứng 16/16 chiều hai nguồn chọn cùng một chuyến — **nhưng làm hỏng nhận xét ở §9 về hãng nào rẻ**. Đừng xếp hạng hãng bằng những dòng bị tô cam.
 
 ## 7. Web hãng — vẫn mặc định TẮT làm nguồn giá theo chuyến
 
@@ -118,11 +134,15 @@ Cảnh báo LCC cộng thuế phí ở bước sau **chỉ áp dụng cho web h�
 
 ## 8. Bước 3 — Xuất Excel
 
+Chuỗi đầy đủ: **extract → `merge_sources.py` → `build_workbook.py` → recalc → đối chiếu.**
+
 `scripts/build_workbook.py <checkpoint.json> <output.xlsx>` → 3 sheet:
 
 - **Data** — nhóm theo cặp ngày. Block A (chiều đi), Block B (chiều về), Block C (phương án ghép: "Rẻ nhất" và "Cùng hãng rẻ nhất"). Cột giá sinh động theo số nguồn thực quét; `Chênh lệch max %` chỉ xuất hiện khi có ≥2 nguồn.
 - **Summary** — mỗi cặp một dòng, sắp xếp tổng tăng dần.
 - **Log** — bắt buộc. Đây là bằng chứng phân biệt "ô trống vì hết chuyến" với "ô trống vì bị chặn".
+
+Màu trong sheet `Data`: **vàng** = rẻ nhất trong chiều đó; **cam** = hai nguồn lệch ≥25%, số đáng ngờ. Ô cam không phải giá để tiêu tiền — đọc `Log` trước.
 
 Sau khi build, làm **hai bước tách biệt**:
 
