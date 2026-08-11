@@ -1,0 +1,9 @@
+# Sản phẩm chạy skill (Excel, checkpoint, JSON thô, script ad-hoc của từng lần quét)
+runs/
+
+# Gói cài đặt — sinh lại bằng ./build-skill.sh, không commit binary
+*.skill
+
+.DS_Store
+__pycache__/
+*.pyc
