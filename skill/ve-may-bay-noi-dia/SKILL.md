@@ -119,12 +119,27 @@ Sau khi build, làm **hai bước tách biệt**:
 **1. Recalc.** `recalc.py` **KHÔNG nằm trong skill này** — nó thuộc skill `xlsx` có sẵn của hệ thống. Định vị nó rồi chạy:
 
 ```bash
-RECALC=$(ls /sessions/*/mnt/.claude/skills/xlsx/scripts/recalc.py 2>/dev/null | head -1)
-[ -z "$RECALC" ] && RECALC=$(find /sessions /mnt -maxdepth 8 -path '*/skills/xlsx/scripts/recalc.py' 2>/dev/null | head -1)
+RECALC=""
+for p in /sessions/*/mnt/.claude/skills/xlsx/scripts/recalc.py \
+         "$HOME/.claude/skills/xlsx/scripts/recalc.py"; do
+  [ -f "$p" ] && { RECALC="$p"; break; }
+done
+[ -z "$RECALC" ] && RECALC=$(find "$HOME/.claude" \
+  "$HOME/Library/Application Support/Claude/local-agent-mode-sessions" \
+  /sessions /mnt -maxdepth 12 -path '*/skills/xlsx/scripts/recalc.py' 2>/dev/null | head -1)
 python3 "$RECALC" <output.xlsx> 180
 ```
 
-Đường dẫn skill hệ thống đổi theo phiên nên phải dò. **Đừng dùng `find /`** — mất ~53 giây. Glob `/sessions/*/mnt/...` trả về tức thì; `find` có giới hạn phạm vi chỉ là phương án dự phòng. Nếu vẫn không thấy, gọi skill `xlsx` để nó tự nạp.
+Đường dẫn skill hệ thống đổi theo phiên **và theo môi trường** nên phải dò. Hai glob đầu bắt
+đường nhanh (sandbox Cowork `/sessions/*/mnt/...`, và thư mục skill cá nhân). Nhánh `find`
+là dự phòng cho Claude Code trên macOS, nơi skill hệ thống nằm sâu trong
+`~/Library/Application Support/Claude/local-agent-mode-sessions/.../skills/xlsx/`. Đo thực tế
+trên máy local: **~0,8 giây**. **Đừng dùng `find /`** — mất ~53 giây. Nếu vẫn không thấy, gọi
+skill `xlsx` để nó tự nạp.
+
+`recalc.py` cần **LibreOffice** (`soffice` trên PATH) và import package `office/` nằm cạnh nó
+trong `scripts/` — gọi bằng đường dẫn tuyệt đối như trên là đủ, không cần chỉnh `PYTHONPATH`.
+Thiếu `soffice` thì nó báo lỗi rõ ràng chứ không âm thầm bỏ qua.
 
 openpyxl ghi công thức dưới dạng chuỗi **không kèm giá trị**, nên chưa recalc thì mọi ô công thức đọc ra `None`. Bỏ bước này là file giao đi trông rỗng.
 

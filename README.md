@@ -43,10 +43,11 @@ Cách này sửa file trong repo là skill đổi theo ngay, không cần đóng
 - **Playwright MCP** (`npx @playwright/mcp@latest`) — đường nhanh cho Traveloka, rẻ hơn
   ~15–20 lần so với Claude in Chrome. Không có vẫn chạy được nhưng tốn thao tác.
 - **Claude in Chrome** — đường dự phòng, và là đường chính cho Google Flights.
-- **`openpyxl`** cho python3 đang dùng — `scripts/build_workbook.py` cần. Cowork có sẵn;
-  máy local có thể phải `pip3 install openpyxl`.
-- **Skill `xlsx` của hệ thống** — SKILL.md §8 gọi `recalc.py` từ đó. Đường dò hiện viết theo
-  sandbox Cowork (`/sessions/*/mnt/...`); chạy ở Claude Code local có thể phải dò lại.
+- **`openpyxl`** cho python3 đang dùng — `scripts/build_workbook.py` cần:
+  `pip3 install openpyxl`. Cowork có sẵn.
+- **Skill `xlsx` của hệ thống** + **LibreOffice** (`soffice` trên PATH) — SKILL.md §8 gọi
+  `recalc.py` từ đó để tính công thức Excel. Đường dò trong §8 chạy được cả ở Cowork lẫn
+  Claude Code local.
 
 ## Chạy
 
