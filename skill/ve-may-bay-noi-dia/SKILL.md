@@ -193,8 +193,6 @@ Chạy hai lần trong cùng một ngày thì workbook thêm hậu tố `HHMM`, 
 
 Chưa có thư mục dự án nào được mount thì **dừng lại và hỏi người dùng**. Không được lặng lẽ build vào thư mục tạm rồi báo "xong": `merge_sources.py` và `build_workbook.py` chạy trong sandbox bash, sandbox chỉ thấy các thư mục đã mount, nên chưa mount thì file cuối cùng nằm ở chỗ người dùng không mở được — phải copy tay, và raw rất dễ rơi mất trong lúc copy.
 
-Đặt tên file kèm timestamp để so sánh biến động giữa các lần quét.
-
 ## 9. Bước 4 — Nhận xét (trong chat, không cần trong file)
 
 Chỉ dựa trên số đã thu, không suy diễn ngoài dữ liệu:
