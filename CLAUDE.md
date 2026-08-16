@@ -17,6 +17,10 @@ Yêu cầu về nội dung mỗi thư mục run (`job.json` + raw + checkpoint +
 
 Nguồn sự thật: `skill/ve-may-bay-noi-dia/`. Sửa ở đây → chạy `./build-skill.sh` → Save đè gói `.skill` trong Cowork.
 
+`build-skill.sh` sinh hai file giống hệt nhau: `ve-may-bay-noi-dia.skill` và `ve-may-bay-noi-dia-v<version>.skill`. **Upload bản có version.** Đã xảy ra chuyện upload bản không-version mà Cowork vẫn nạp nội dung cũ, rồi kết luận là chưa build lại — mất một vòng tranh luận mới truy ra file bên phía Cowork không đổi. Tên có version thì nhìn là biết đang cầm bản nào, không phải đi so `md5`.
+
+Sửa SKILL.md xong mà không chạy `build-skill.sh` thì gói vẫn là ảnh chụp cũ — upload lên không có tác dụng gì.
+
 Cache skill mà Cowork nạp (nằm dưới `/var/folders/.../claude-hostloop-plugins/`) là **read-only**. Sửa trực tiếp trong đó không có tác dụng và sẽ mất khi đổi phiên.
 
 ## Quy ước version

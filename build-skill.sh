@@ -23,9 +23,15 @@ grep -q "^\*\*v$VER\*\*" "$SRC" || {
   exit 1
 }
 
-rm -f "$OUT"
+# Ban co version trong ten: upload nham ban cu la loi hay gap, va khi hai file
+# trung ten thi khong the biet dang cam ban nao neu khong md5.
+OUT_VER="$NAME-v$VER.skill"
+
+rm -f "$OUT" "$OUT_VER"
 find "skill/$NAME" -name '.DS_Store' -delete
 (cd skill && zip -q -r -X "../$OUT" "$NAME")
+cp "$OUT" "$OUT_VER"
 
-echo "da tao $OUT — version $VER"
+echo "da tao $OUT va $OUT_VER — version $VER"
+echo "upload ban co version de khoi nham: $OUT_VER"
 echo "nho: git tag v$VER && git push --tags"
