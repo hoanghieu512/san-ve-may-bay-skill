@@ -2,14 +2,14 @@
 name: ve-may-bay-noi-dia
 description: Thu thập và đối chiếu giá vé máy bay nội địa Việt Nam từ nhiều nguồn, rồi xuất file Excel so sánh. Use when người dùng muốn so sánh giá vé, tìm vé rẻ, quét giá nhiều ngày bay, dò giá khứ hồi, hoặc lập bảng so sánh chuyến bay — ví dụ "so giá vé SGN đi Đà Nẵng tháng 8", "tìm vé rẻ nhất HAN-SGN mấy cuối tuần tới", "quét giá vé máy bay giúp huynh", "compare flight prices Vietnam domestic", "check vé Tết". KHÔNG dùng cho chặng quốc tế (logic nối chuyến và hạng vé khác hẳn).
 metadata:
-  version: "1.2.0"
-  updated: "2026-08-11"
+  version: "1.3.0"
+  updated: "2026-08-16"
   source: "https://github.com/hoanghieu512/san-ve-may-bay-skill"
 ---
 
 # Thu thập & so sánh giá vé nội địa VN
 
-**v1.2.0** · cập nhật 11/08/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
+**v1.3.0** · cập nhật 16/08/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
 
 Quét giá thật từ Google Flights / Traveloka bằng Claude in Chrome, đối chiếu chéo, xuất Excel 3 sheet.
 
@@ -182,6 +182,16 @@ openpyxl ghi công thức dưới dạng chuỗi **không kèm giá trị**, nê
 **Recalc sạch chỉ chứng minh công thức *chạy được*, không chứng minh *đúng*.** Một range lệch một dòng vẫn cho file 0 lỗi với số sai. Bước 2 mới là bước bắt lỗi thật.
 
 Nếu đã chạy §3: đối chiếu giá VNA thấp nhất mỗi ngày trong workbook với con số quét ngày. Lệch nhiều (ngoài ~5%) là dấu hiệu quét sót chuyến hoặc giá đã đổi giữa hai lần — điều tra trước khi giao file.
+
+### Nơi lưu kết quả
+
+Mỗi lần chạy là một thư mục `runs/<YYYYMMDD>/` **trong thư mục dự án đang được mount**, không phải scratchpad của phiên — scratchpad mất khi phiên đóng.
+
+Thư mục đó bắt buộc có đủ bốn thứ: `job.json`, **toàn bộ file raw của từng nguồn**, checkpoint, và workbook `.xlsx`. Raw + `job.json` là thứ duy nhất cho phép dựng lại checkpoint và workbook mà không phải quét lại. Thiếu chúng thì run đó không tái lập được, và cũng không đối chiếu được với run sau để biết giá đã đổi bao nhiêu. Chuyện này đã xảy ra: `runs/20260805/` giờ chỉ còn checkpoint và xlsx, không dựng lại được gì từ nó.
+
+Chạy hai lần trong cùng một ngày thì workbook thêm hậu tố `HHMM`, **không ghi đè file cũ**. Mục đích chính của việc lưu run là so sánh biến động giữa các lần quét — ghi đè là xoá mất đúng thứ đó.
+
+Chưa có thư mục dự án nào được mount thì **dừng lại và hỏi người dùng**. Không được lặng lẽ build vào thư mục tạm rồi báo "xong": `merge_sources.py` và `build_workbook.py` chạy trong sandbox bash, sandbox chỉ thấy các thư mục đã mount, nên chưa mount thì file cuối cùng nằm ở chỗ người dùng không mở được — phải copy tay, và raw rất dễ rơi mất trong lúc copy.
 
 Đặt tên file kèm timestamp để so sánh biến động giữa các lần quét.
 
