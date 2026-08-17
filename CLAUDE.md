@@ -23,6 +23,28 @@ Sửa SKILL.md xong mà không chạy `build-skill.sh` thì gói vẫn là ảnh
 
 Cache skill mà Cowork nạp (nằm dưới `/var/folders/.../claude-hostloop-plugins/`) là **read-only**. Sửa trực tiếp trong đó không có tác dụng và sẽ mất khi đổi phiên.
 
+### Cài đè phải đủ 13 file, không chỉ SKILL.md
+
+Gói `.skill` là zip chứa **đủ 13 file** (SKILL.md + 5 `references/` + 7 `scripts/`). Nhưng agent
+bên Cowork có đường tắt `save_skill` chỉ ghi lại SKILL.md và giữ nguyên `references/` +
+`scripts/` của bản đang cài. Đã xảy ra ở v1.4.0: gói đủ file, nhưng chỉ SKILL.md được ghi.
+
+Lần đó vô hại vì v1.4.0 chỉ sửa SKILL.md. Nguy hiểm là khi bản mới có sửa `scripts/`: SKILL.md
+mới chạy với script cũ, sai âm thầm, không có lỗi nào để lần ra.
+
+Vì vậy khi drop gói: nói rõ **"cài đè toàn bộ gói, cả references và scripts"**, rồi yêu cầu
+liệt kê lại từng file đã ghi. Đường tắt chỉ-SKILL.md chấp nhận được duy nhất khi đã diff và
+biết chắc 12 file kia không đổi.
+
+Cách tự kiểm nhanh xem bản mới có đụng file khác ngoài SKILL.md:
+
+```bash
+git diff --stat <tag-cũ> HEAD -- skill/
+```
+
+Lịch sử để tham chiếu: 3/5 bản đầu (v1.0.1, v1.1.0, v1.2.0) đều có sửa `scripts/` —
+"hầu như chỉ sửa SKILL.md" là cảm giác sai, đừng dựa vào nó để chọn cách upload.
+
 ## Quy ước version
 
 SKILL.md có dòng version + ngày cập nhật ở hai chỗ: `metadata.version` trong frontmatter và dòng `**vX.Y.Z** · cập nhật DD/MM/YYYY` ở đầu body. `build-skill.sh` chặn đóng gói nếu hai chỗ lệch nhau.
