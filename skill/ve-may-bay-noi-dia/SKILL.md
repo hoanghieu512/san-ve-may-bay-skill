@@ -2,14 +2,14 @@
 name: ve-may-bay-noi-dia
 description: Thu thập và đối chiếu giá vé máy bay nội địa Việt Nam từ nhiều nguồn, rồi xuất file Excel so sánh. Use when người dùng muốn so sánh giá vé, tìm vé rẻ, quét giá nhiều ngày bay, dò giá khứ hồi, hoặc lập bảng so sánh chuyến bay — ví dụ "so giá vé SGN đi Đà Nẵng tháng 8", "tìm vé rẻ nhất HAN-SGN mấy cuối tuần tới", "quét giá vé máy bay giúp huynh", "compare flight prices Vietnam domestic", "check vé Tết". KHÔNG dùng cho chặng quốc tế (logic nối chuyến và hạng vé khác hẳn).
 metadata:
-  version: "1.3.0"
-  updated: "2026-08-16"
+  version: "1.4.0"
+  updated: "2026-08-17"
   source: "https://github.com/hoanghieu512/san-ve-may-bay-skill"
 ---
 
 # Thu thập & so sánh giá vé nội địa VN
 
-**v1.3.0** · cập nhật 16/08/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
+**v1.4.0** · cập nhật 17/08/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
 
 Quét giá thật từ Google Flights / Traveloka bằng Claude in Chrome, đối chiếu chéo, xuất Excel 3 sheet.
 
@@ -207,3 +207,19 @@ Bắt buộc kèm: timestamp, cảnh báo giá thay đổi liên tục, và **t�
 **Nêu giả thuyết rồi kiểm chứng bằng số — và nói rõ khi dữ liệu bác bỏ nó.** Ví dụ thực tế: giả thuyết "cặp sát lễ đắt vì chiều về sát lễ" đã bị bác bỏ — chiều về sát lễ chỉ đắt hơn 0,3%, toàn bộ phần đắt nằm ở chiều đi Thứ 6 (+52,7%). Tách theo từng chiều trước khi kết luận về cả cặp; hai hiệu ứng ngược chiều có thể triệt tiêu nhau ở mức tổng.
 
 Với ít hơn ~6 cặp ngày, không đủ điểm dữ liệu để tách hiệu ứng "booking horizon" khỏi hiệu ứng "ngày trong tuần". Nói thẳng là không kết luận được thay vì đoán.
+
+## 10. Bước 5 — Dọn dẹp browser (BẮT BUỘC, không phải tuỳ chọn)
+
+Task chỉ **xong** khi browser đã đóng. Quét xong mà bỏ browser mở là để người dùng đi đóng tay,
+và Chromium bị tắt không sạch sẽ hiện popup "Restore pages?" ở lần chạy sau — đã xảy ra.
+
+Làm ngay sau khi đã giao file và viết nhận xét ở §9, **không** làm trước khi verify workbook
+(còn cần mở lại nguồn nếu có ô cam ở §6).
+
+- **Playwright MCP** → gọi `browser_close`. Đây là Chromium do skill tự bật, đóng hẳn là đúng.
+- **Claude in Chrome** → chỉ đóng **những tab chính skill đã mở** bằng `tabs_close_mcp`. Liệt kê
+  tab bằng `tabs_context_mcp` trước để không nhắm sai. **Không đóng cả Chrome** — đó là browser
+  cá nhân của người dùng, đang có tab của họ.
+
+Báo lại một dòng là đã đóng gì. Nếu bước đóng lỗi (MCP mất kết nối, không còn session), nói
+thẳng browser vẫn đang mở để người dùng tự đóng — đừng im lặng coi như đã dọn.
