@@ -2,16 +2,16 @@
 name: ve-may-bay-noi-dia
 description: Thu thập và đối chiếu giá vé máy bay nội địa Việt Nam từ nhiều nguồn, rồi xuất file Excel so sánh. Use when người dùng muốn so sánh giá vé, tìm vé rẻ, quét giá nhiều ngày bay, dò giá khứ hồi, hoặc lập bảng so sánh chuyến bay — ví dụ "so giá vé SGN đi Đà Nẵng tháng 8", "tìm vé rẻ nhất HAN-SGN mấy cuối tuần tới", "quét giá vé máy bay giúp huynh", "compare flight prices Vietnam domestic", "check vé Tết". KHÔNG dùng cho chặng quốc tế (logic nối chuyến và hạng vé khác hẳn).
 metadata:
-  version: "1.4.0"
-  updated: "2026-08-17"
+  version: "1.5.0"
+  updated: "2026-10-23"
   source: "https://github.com/hoanghieu512/san-ve-may-bay-skill"
 ---
 
 # Thu thập & so sánh giá vé nội địa VN
 
-**v1.4.0** · cập nhật 17/08/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
+**v1.5.0** · cập nhật 23/10/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
 
-Quét giá thật từ Google Flights / Traveloka bằng Claude in Chrome, đối chiếu chéo, xuất Excel 3 sheet.
+Quét giá thật từ Google Flights / Traveloka, đối chiếu chéo, xác nhận nơi mua của các chuyến đề xuất, rồi xuất Excel 4 sheet. Đích cuối: người dùng mở file là biết **mua chuyến nào, ở người bán nào, giá bao nhiêu, bấm link nào**.
 
 > Người dùng hỏi skill này version mấy / có mới nhất không → đọc số trên, đối chiếu với
 > `git tag` mới nhất ở repo nguồn. Lệch nghĩa là bản đang nạp đã cũ, cần build lại gói
@@ -24,8 +24,8 @@ Quét giá thật từ Google Flights / Traveloka bằng Claude in Chrome, đố
 1. **TUYỆT ĐỐI KHÔNG BỊA GIÁ.** Không suy đoán, không nội suy, không "ước lượng theo mặt bằng", không dùng kiến thức có sẵn. Chỉ ghi con số đọc trực tiếp trên trang tại thời điểm quét.
 2. Ô không lấy được → ghi `Không khả dụng` **kèm lý do** vào sheet `Log` (bị chặn / cần login / captcha / hết chuyến / hãng không bán / ngoài khung giờ).
 3. **Một file nhiều ô `Không khả dụng` trung thực tốt hơn một file đầy đủ có số bịa.** Khi phải chọn, luôn chọn trung thực.
-4. Mỗi mức giá bắt buộc có link nguồn + timestamp.
-5. Không đăng nhập, không nhập thanh toán, không bấm đặt vé. Gặp captcha → **dừng, báo người dùng, chờ**. Không tự giải, không vòng qua.
+4. Mỗi mức giá bắt buộc có link nguồn + thời điểm đọc giá (giờ VN). Giá đề xuất mua phải kèm **người bán cụ thể** (hãng hay đại lý) và link tới **đúng chuyến đó**, không phải trang tìm kiếm chung.
+5. Không đăng nhập, không nhập thanh toán, không bấm đặt vé. Ở trang đặt vé Google Flights chỉ đọc, **không bấm "Tiếp tục"**. Gặp captcha → **dừng, báo người dùng, chờ**. Không tự giải, không vòng qua.
 6. Cookie/consent → chọn phương án bảo vệ riêng tư nhất.
 
 ## 2. Tham số — hỏi nếu thiếu
@@ -35,10 +35,10 @@ Quét giá thật từ Google Flights / Traveloka bằng Claude in Chrome, đố
 | Chặng | *(bắt buộc hỏi)* |
 | Cặp ngày đi/về | *(bắt buộc hỏi — nếu người dùng chưa chốt, chạy §3 trước)* |
 | Khung giờ đi / về | Không lọc — hỏi người dùng có muốn lọc không |
-| Số khách / hạng | 1 người lớn / Phổ thông |
+| Số khách / hạng | 1 người lớn / Phổ thông. **Mọi giá và link trong file là cho 1 người lớn.** Đoàn đông: nói rõ điều này; người dùng mở link rồi đổi số khách trên trang để xem tổng |
 | Loại chuyến | Chỉ bay thẳng |
 | Hành lý | Không ký gửi (lấy hạng vé rẻ nhất còn bán) |
-| Nguồn | Google Flights (bắt buộc) + Traveloka (mặc định bật) |
+| Nguồn | Google Flights (bắt buộc) + Traveloka (mặc định bật). Bước xác nhận nơi mua (§6) luôn chạy, trên trang đặt vé Google Flights |
 | Web hãng | **Mặc định TẮT** làm nguồn giá — xem §7 |
 
 ## 3. Bước 0 — Quét ngày (bỏ qua nếu người dùng đã chốt cặp ngày)
@@ -72,8 +72,14 @@ Bỏ qua bước này là lỗi nghiêm trọng nhất có thể mắc: nó khi�
 | Google Flights | Playwright / Chrome | ~2 | Toàn bộ | Có (phải bung từng dòng) |
 | Traveloka | Claude in Chrome | ~7 + 3 ảnh | Thiếu Bamboo | Không |
 | Web hãng | cả hai | ~15+ **mỗi hãng** | 1 hãng / site | Có |
+| Xác nhận nơi mua (trang đặt vé GF) | Playwright | **~1 call / 8 chuyến** | Mọi người bán GF liệt kê | Cần có sẵn |
+| Xác nhận nơi mua (trang đặt vé GF) | Claude in Chrome | ~2 / chuyến | như trên | như trên |
 
-Nếu Playwright MCP có sẵn, Traveloka rẻ hơn ~15–20 lần — đọc `references/playwright-path.md`.
+Nếu Playwright MCP có sẵn, Traveloka rẻ hơn ~15–20 lần: đọc `references/playwright-path.md`.
+
+Bước xác nhận nơi mua chỉ chạy cho **danh sách đề xuất**: chuyến của Block C + 3 chuyến rẻ nhất mỗi chiều, chuyến trùng giữa các cặp chỉ tính một lần. Thường 4–8 chuyến mỗi cặp ngày. Cộng phần này vào ước lượng.
+
+**Đếm cả số lượt tải trang Google Flights**, không chỉ số thao tác: mỗi chặng quét = 1 lượt, mỗi chuyến xác nhận = 1 lượt. Đo 23/10/2026 từ IP cloud: khoảng 30 lượt trong khoảng 40 phút thì bị captcha (xem `site-quirks.md`). Phương án vượt mức đó thì nói rõ rủi ro khi đưa lựa chọn cho người dùng.
 
 Tính tổng, rồi **dùng AskUserQuestion đưa ra 2-3 phương án phạm vi kèm ưu/nhược** trước khi tốn thao tác nào. Ví dụ 4 cặp × 2 nguồn ≈ 36 thao tác (chạy tốt); 8 cặp × 2 nguồn ≈ 72 (vẫn được); thêm web hãng cho 4 hãng ≈ 480 (không khả thi).
 
@@ -98,13 +104,13 @@ Chế độ khứ hồi của Google Flights trả về *tổng* khứ hồi khi
 
 Thứ tự quét: **tự do**. Cross-check hợp lệ miễn hai nguồn cách nhau dưới ~2 giờ. Thực nghiệm trên chặng nội địa: quét hết một nguồn rồi sang nguồn kia, cách nhau ~40 phút, lệch chỉ 0,2–2,2%. Quét theo nguồn rẻ hơn vì tái dùng được extractor.
 
-Sau **mỗi chặng**: chạy sanity check (số kết quả thô và số hãng — xem `playwright-path.md`), ghi JSON thô ra file, báo tiến độ một dòng. Không giữ dữ liệu trong đầu.
+Sau **mỗi chặng**: chạy sanity check (số kết quả thô và số hãng, xem `playwright-path.md`), ghi JSON thô ra file **kèm giờ quét** (khoá `_thu_thap`, mọi extractor đều in sẵn dòng `luc`), báo tiến độ một dòng. Không giữ dữ liệu trong đầu.
 
 **Không bao giờ chấp nhận một chặng có ít chuyến bất thường mà không điều tra.** Cả hai công cụ đều có thể trả dữ liệu thiếu một cách im lặng: Chrome vì danh sách virtualized chưa nạp hết, Playwright vì body bị cắt khi navigate quá sớm. Ít chuyến có thể là thật, nhưng phải xác minh chứ không mặc định.
 
 ### Ghép nguồn — đừng viết lại bằng tay
 
-Quét xong thì **dùng `scripts/merge_sources.py`**, đừng tự viết code ghép cho từng lần chạy. Nó nhận một `job.json` mô tả chặng và cặp ngày, trả về checkpoint đúng schema, tự chuẩn hoá tên hãng và tự sinh các dòng `Log` bắt buộc. Đọc `references/merge-sources.md`.
+Quét xong thì **dùng `scripts/merge_sources.py`**, đừng tự viết code ghép cho từng lần chạy. Nó nhận một `job.json` mô tả chặng và cặp ngày, trả về checkpoint đúng schema, tự chuẩn hoá tên hãng, dựng link trang đặt vé cho từng chuyến có số hiệu, và tự sinh các dòng `Log` bắt buộc. Giờ thu thập luôn là giờ VN (sandbox chạy UTC, giờ máy lệch 7 tiếng). Đọc `references/merge-sources.md`.
 
 ```bash
 python3 scripts/merge_sources.py job.json checkpoint.json
@@ -116,9 +122,29 @@ python3 scripts/merge_sources.py job.json checkpoint.json
 
 Không được bỏ qua, và cũng không được sửa/lọc số. Việc phải làm: mở lại nguồn cao hơn, xem nó đang bán hạng vé nào, rồi ghi kết luận vào `Log`. Nếu không xác minh được thì ghi thẳng là chưa xác minh được.
 
-Ví dụ đã gặp (09/08/2026): Sun PhuQuoc Airways lệch 78–123% ở mọi chặng vì Google Flights chỉ truy cập được hạng vé đắt của hãng này. **Điều đó không đổi chuyến rẻ nhất** — đã kiểm chứng 16/16 chiều hai nguồn chọn cùng một chuyến — **nhưng làm hỏng nhận xét ở §9 về hãng nào rẻ**. Đừng xếp hạng hãng bằng những dòng bị tô cam.
+Ví dụ đã gặp (09/08/2026): Sun PhuQuoc Airways lệch 78–123% ở mọi chặng vì Google Flights chỉ truy cập được hạng vé đắt của hãng này. **Điều đó không đổi chuyến rẻ nhất** (đã kiểm chứng 16/16 chiều hai nguồn chọn cùng một chuyến), **nhưng làm hỏng nhận xét ở §9 về hãng nào rẻ**. Đừng xếp hạng hãng bằng những dòng bị tô cam.
+
+### Xác nhận nơi mua: bắt buộc trước khi build
+
+Giá ở danh sách Google Flights **không phải chỗ mua**: Google không bán vé, và con số ở danh sách chưa chắc là giá mua thấp nhất. Đo 23/10/2026, VJ 632 SGN-DAD ngày 14/11: danh sách ghi 742.061 ₫ (giá Vietjet, đã gồm 100.000 ₫ phí tiện lợi), còn trang đặt vé của chính chuyến đó có đại lý Jettzy bán 679.301 ₫. Người dùng cần biết mua ở đâu, giá bao nhiêu, bấm link nào, nên bước này không được bỏ.
+
+1. `python3 scripts/merge_sources.py job.json checkpoint.json --de-xuat` in danh sách `FLIGHTS`: mỗi chuyến đề xuất kèm link trang đặt vé dựng sẵn.
+2. Dán vào khối tham số của `scripts/gf_booking.js`, chạy qua `browser_run_code_unsafe`. Lưu **nguyên văn** chuỗi trả về ra `gf_booking_raw.json` trong thư mục run. `con_lai` khác rỗng (hết ngân sách thời gian của một call) thì gọi lại với phần còn lại, lưu `gf_booking_raw_2.json`.
+3. Khai báo `"xac_nhan": ["gf_booking_raw.json", ...]` trong `job.json`, chạy lại merge.
+
+Đọc `references/gf-booking.md` trước: cấu trúc link, cách đọc người bán, các trạng thái lỗi.
+
+- Chỉ đọc trang. **Không bấm "Tiếp tục"**, không đăng nhập. Link nằm trong file để người dùng tự bấm.
+- Merge in `THIẾU SỐ HIỆU` cho chuyến chưa có số hiệu (thường là Bamboo, vì Traveloka không bán): bung dòng đó trên Google Flights lấy số hiệu, thêm vào file thô, chạy lại merge. Không lấy được thì để nguyên, Log tự ghi.
+- Đại lý lạ (vd Jettzy) vẫn ghi đủ, gắn nhãn `Đại lý`. Ở §9, nêu cả giá rẻ nhất lẫn giá mua thẳng từ hãng; đừng biến đại lý lạ thành khuyến nghị duy nhất.
+- Giá trên trang đặt vé khác giá lúc quét: sheet Mua vé dùng giá mới, sheet Data giữ giá lúc quét, merge tự ghi Log. Không sửa số trong file thô.
+- `gf_booking.js` trả `dung` khác rỗng (captcha / trang consent) → dừng toàn bộ, báo người dùng (§1.5).
+
+Không có Playwright: mở từng link bằng Claude in Chrome (`navigate` rồi `get_page_text`), đọc khối "Tùy chọn đặt vé", tự ghi kết quả đúng định dạng trong `gf-booking.md`. Khoảng 2 thao tác mỗi chuyến.
 
 ## 7. Web hãng — vẫn mặc định TẮT làm nguồn giá theo chuyến
+
+Giá bán của chính hãng đã có sẵn ở bước xác nhận nơi mua (§6): trang đặt vé Google Flights ghi dòng "Đặt vé của <hãng> · Hãng hàng không" kèm giá và phí. Thêm một lý do để không mở web hãng làm nguồn.
 
 "Website chính thức của hãng" nghe như một nguồn nhưng thực chất là **N site độc lập**, mỗi site một form nhiều tầng, có reCAPTCHA. Chi phí ~15+ thao tác/site/chặng và không phải lúc nào cũng lấy được số.
 
@@ -134,19 +160,22 @@ Cảnh báo LCC cộng thuế phí ở bước sau **chỉ áp dụng cho web h�
 
 ## 8. Bước 3 — Xuất Excel
 
-Chuỗi đầy đủ: **extract → `merge_sources.py` → `build_workbook.py` → recalc → đối chiếu.**
+Chuỗi đầy đủ: **extract → `merge_sources.py --de-xuat` → `gf_booking.js` → `merge_sources.py` (có `xac_nhan`) → `build_workbook.py` → recalc → `verify_workbook.py`.**
 
-`scripts/build_workbook.py <checkpoint.json> <output.xlsx>` → 3 sheet:
+`scripts/build_workbook.py <checkpoint.json> <output.xlsx>` → 4 sheet, theo thứ tự:
 
-- **Data** — nhóm theo cặp ngày. Block A (chiều đi), Block B (chiều về), Block C (phương án ghép: "Rẻ nhất" và "Cùng hãng rẻ nhất"). Cột giá sinh động theo số nguồn thực quét; `Giá thấp nhất (mọi nguồn)` và `Chênh lệch max %` chỉ xuất hiện khi có ≥2 nguồn.
-- **Summary** — mỗi cặp một dòng, sắp xếp theo `Tổng theo Giá chốt` tăng dần.
+- **Summary** (sheet mở ra đầu tiên): mỗi cặp một dòng, sắp theo `Tổng theo Giá chốt` tăng dần. Có chuyến đi/về, tổng theo Giá chốt, tổng theo giá thấp nhất, **`Tổng mua được rẻ nhất` + nơi mua**, **`Tổng nếu mua thẳng từ hãng`**, link trang đặt vé của từng chiều, và cột `Cảnh báo` (chiều nào lệch ≥25%, chiều nào chưa xác nhận nơi mua).
+- **Mua vé**: mỗi chuyến đề xuất một nhóm dòng, mỗi người bán một dòng, rẻ trước: người bán, hãng hay đại lý, giá, ghi chú phí, hành lý, link, thời điểm đọc giá, nguồn dữ liệu. Người bán lấy từ trang đặt vé Google Flights và từ nguồn quét vốn là người bán (Traveloka). Chuyến chưa xác nhận có dòng chữ đỏ đứng đầu nhóm.
+- **Data**: nhóm theo cặp ngày. Block A (chiều đi), Block B (chiều về), Block C (phương án ghép: "Rẻ nhất" và "Cùng hãng rẻ nhất"). Cột giá sinh động theo số nguồn thực quét; `Giá thấp nhất (mọi nguồn)`, `Nguồn giá thấp nhất` và `Chênh lệch max %` chỉ xuất hiện khi có ≥2 nguồn. Mỗi chuyến có link trang đặt vé riêng và thời điểm thu thập của đúng chặng đó.
 
 **Hai cột giá, đừng nhầm.** `Giá chốt (nguồn ưu tiên)` = giá của nguồn đầu tiên có số theo `meta.nguon` — **không phải** giá thấp nhất. `Giá thấp nhất (mọi nguồn)` mới là số nhỏ nhất. Việc chọn chuyến và sắp xếp Summary chạy theo `Giá chốt` để mọi con số cùng một nguồn, so sánh mới có nghĩa; cột giá thấp nhất đặt cạnh để thấy khoảng cách.
 
-Đo trên chặng SGN-DAD 09/08/2026: hai cách chênh ~1%, và **16/16 chiều hai nguồn chọn đúng cùng một chuyến rẻ nhất** — nên cách chọn không đổi khuyến nghị, chỉ đổi con số hiển thị. Khi báo cáo ở §9, nói rõ đang trích cột nào. Đừng gộp hai cột thành một câu "giá rẻ nhất là X".
+Đo trên chặng SGN-DAD 09/08/2026: hai cách chênh ~1%, và **16/16 chiều hai nguồn chọn đúng cùng một chuyến rẻ nhất**, nên cách chọn không đổi khuyến nghị, chỉ đổi con số hiển thị. Khi báo cáo ở §9, nói rõ đang trích cột nào. Đừng gộp hai cột thành một câu "giá rẻ nhất là X".
+
+Cột thứ ba ở Summary, `Tổng mua được rẻ nhất`, là con số **mua được**: giá thấp nhất ở người bán cho đúng hai chuyến của phương án đó, đọc ở bước xác nhận (giờ đọc nằm ở sheet Mua vé). Khi khuyên người dùng mua, trích cột này kèm tên người bán.
 - **Log** — bắt buộc. Đây là bằng chứng phân biệt "ô trống vì hết chuyến" với "ô trống vì bị chặn".
 
-Màu trong sheet `Data`: **vàng** = rẻ nhất trong chiều đó; **cam** = hai nguồn lệch ≥25%, số đáng ngờ. Ô cam không phải giá để tiêu tiền — đọc `Log` trước.
+Màu trong sheet `Data`: **vàng** = rẻ nhất trong chiều đó; **cam** = hai nguồn lệch ≥25%, số đáng ngờ. Ô cam không phải giá để tiêu tiền: đọc `Log` trước. Sheet `Summary`: dòng vàng = cặp rẻ nhất theo Giá chốt, ô xanh = cặp mua được rẻ nhất. Sheet `Mua vé`: vàng = người bán rẻ nhất của chuyến đó.
 
 Sau khi build, làm **hai bước tách biệt**:
 
@@ -177,7 +206,7 @@ Thiếu `soffice` thì nó báo lỗi rõ ràng chứ không âm thầm bỏ qua
 
 openpyxl ghi công thức dưới dạng chuỗi **không kèm giá trị**, nên chưa recalc thì mọi ô công thức đọc ra `None`. Bỏ bước này là file giao đi trông rỗng.
 
-**2. Đối chiếu độc lập bằng Python.** Load lại file với `data_only=True`, kiểm tra `Giá chốt` khớp nguồn, `Tổng khứ hồi` khớp `Giá đi + Giá về`, `Summary` khớp kết quả tính tay từ dữ liệu thô.
+**2. Đối chiếu độc lập: `python3 scripts/verify_workbook.py checkpoint.json output.xlsx`.** Script tự tính lại mọi con số từ checkpoint bằng code riêng (không dùng chung code chọn chuyến với build) rồi so với file: giá từng nguồn, Giá chốt, giá thấp nhất, Block C (vét cạn), Summary (tổng, thứ tự, đủ link hai chiều, tổng mua được rẻ nhất), Mua vé (giá khớp nguồn, đủ link và thời điểm), ô `Không khả dụng` nào cũng có Log. Nó cũng bắt được file **chưa recalc**. Thoát mã 1 = có lỗi: sửa rồi build lại, **không giao file**.
 
 **Recalc sạch chỉ chứng minh công thức *chạy được*, không chứng minh *đúng*.** Một range lệch một dòng vẫn cho file 0 lỗi với số sai. Bước 2 mới là bước bắt lỗi thật.
 
@@ -187,7 +216,7 @@ Nếu đã chạy §3: đối chiếu giá VNA thấp nhất mỗi ngày trong w
 
 Mỗi lần chạy là một thư mục `runs/<YYYYMMDD>/` **trong thư mục dự án đang được mount**, không phải scratchpad của phiên — scratchpad mất khi phiên đóng.
 
-Thư mục đó bắt buộc có đủ bốn thứ: `job.json`, **toàn bộ file raw của từng nguồn**, checkpoint, và workbook `.xlsx`. Raw + `job.json` là thứ duy nhất cho phép dựng lại checkpoint và workbook mà không phải quét lại. Thiếu chúng thì run đó không tái lập được, và cũng không đối chiếu được với run sau để biết giá đã đổi bao nhiêu. Chuyện này đã xảy ra: `runs/20260805/` giờ chỉ còn checkpoint và xlsx, không dựng lại được gì từ nó.
+Thư mục đó bắt buộc có đủ bốn thứ: `job.json`, **toàn bộ file raw của từng nguồn** (kể cả `gf_booking_raw*.json` của bước xác nhận nơi mua), checkpoint, và workbook `.xlsx`. Raw + `job.json` là thứ duy nhất cho phép dựng lại checkpoint và workbook mà không phải quét lại. Thiếu chúng thì run đó không tái lập được, và cũng không đối chiếu được với run sau để biết giá đã đổi bao nhiêu. Chuyện này đã xảy ra: `runs/20260805/` giờ chỉ còn checkpoint và xlsx, không dựng lại được gì từ nó.
 
 Chạy hai lần trong cùng một ngày thì workbook thêm hậu tố `HHMM`, **không ghi đè file cũ**. Mục đích chính của việc lưu run là so sánh biến động giữa các lần quét — ghi đè là xoá mất đúng thứ đó.
 
@@ -200,9 +229,10 @@ Chỉ dựa trên số đã thu, không suy diễn ngoài dữ liệu:
 1. Cặp rẻ nhất / đắt nhất, chênh bao nhiêu %
 2. Hãng nào thường rẻ nhất — nêu rõ chiều nào, khung giờ nào
 3. Khung giờ nào giá tốt
-4. Mua ngay hay theo dõi — **trả lời riêng từng cặp**, không kết luận chung
+4. Mua ngay hay theo dõi: **trả lời riêng từng cặp**, không kết luận chung
+5. **Mua ở đâu**: với cặp khuyến nghị, nêu người bán rẻ nhất + giá + giờ đọc giá (sheet Mua vé), và giá mua thẳng từ hãng nếu khác. Nói rõ người bán là hãng hay đại lý.
 
-Bắt buộc kèm: timestamp, cảnh báo giá thay đổi liên tục, và **tỷ lệ phủ dữ liệu** (bao nhiêu ô có giá thật / bao nhiêu `Không khả dụng`).
+Bắt buộc kèm: timestamp, cảnh báo giá thay đổi liên tục, **tỷ lệ phủ dữ liệu** (bao nhiêu ô có giá thật / bao nhiêu `Không khả dụng`), và **số chuyến đề xuất đã xác nhận nơi mua / tổng số chuyến đề xuất**.
 
 **Nêu giả thuyết rồi kiểm chứng bằng số — và nói rõ khi dữ liệu bác bỏ nó.** Ví dụ thực tế: giả thuyết "cặp sát lễ đắt vì chiều về sát lễ" đã bị bác bỏ — chiều về sát lễ chỉ đắt hơn 0,3%, toàn bộ phần đắt nằm ở chiều đi Thứ 6 (+52,7%). Tách theo từng chiều trước khi kết luận về cả cặp; hai hiệu ứng ngược chiều có thể triệt tiêu nhau ở mức tổng.
 

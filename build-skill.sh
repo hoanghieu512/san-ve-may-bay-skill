@@ -19,7 +19,7 @@ VER=$(awk '/^---$/{n++; next} n==1 && /^[[:space:]]*version:/ {
 # dong tuong ung o body, dang: **v1.0.0** · cap nhat ...
 grep -q "^\*\*v$VER\*\*" "$SRC" || {
   echo "FAIL: frontmatter ghi version $VER nhung body khong co dong '**v$VER**'"
-  echo "      sua cho khop roi chay lai — hai cho phai cung so"
+  echo "      sua cho khop roi chay lai: hai cho phai cung so"
   exit 1
 }
 
@@ -29,9 +29,12 @@ OUT_VER="$NAME-v$VER.skill"
 
 rm -f "$OUT" "$OUT_VER"
 find "skill/$NAME" -name '.DS_Store' -delete
-(cd skill && zip -q -r -X "../$OUT" "$NAME")
+# __pycache__ sinh ra khi chay script/test (build_workbook.py import shortlist.py): khong dong goi
+(cd skill && zip -q -r -X "../$OUT" "$NAME" -x '*/__pycache__/*' '*.pyc')
 cp "$OUT" "$OUT_VER"
 
-echo "da tao $OUT va $OUT_VER — version $VER"
+N=$(unzip -Z1 "$OUT" | grep -vc '/$')
+echo "da tao $OUT va $OUT_VER, version $VER, $N file"
+echo "      (doi chieu voi so file ghi o CLAUDE.md khi yeu cau Cowork liet ke file da ghi)"
 echo "upload ban co version de khoi nham: $OUT_VER"
 echo "nho: git tag v$VER && git push --tags"

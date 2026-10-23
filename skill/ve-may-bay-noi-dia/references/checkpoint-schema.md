@@ -23,13 +23,25 @@ Ghi sau **mỗi chặng one-way**, không đợi hết cặp. Nếu phiên đứ
       "thu": "Năm → Hai",
       "di": {
         "link": { "Google Flights": "https://…", "Traveloka": "https://…" },
+        "thu_thap": { "Google Flights": "02/08/2026 14:05 (giờ VN)", "Traveloka": "02/08/2026 14:31 (giờ VN)" },
         "chuyen": [
           { "sh": "VN 104", "hang": "Vietnam Airlines", "dep": "06:30", "arr": "07:50",
-            "gia": { "Google Flights": 2100181, "Traveloka": 2079179 } }
+            "gia": { "Google Flights": 2100181, "Traveloka": 2079179 },
+            "link_chuyen": "https://www.google.com/travel/flights/booking?tfs=…",
+            "mua": { "url": "https://www.google.com/travel/flights/booking?tfs=…",
+                     "luc": "02/08/2026 14:50 (giờ VN)", "trang_thai": "OK", "ly_do": "",
+                     "chuyen": "…", "hanh_ly": ["Miễn phí kiện hành lý ký gửi đầu tiên"],
+                     "ban": [ { "nguoi_ban": "Vietnam Airlines", "loai": "Hãng hàng không",
+                                "gia": 2100181, "ghi_chu": "" } ] } }
         ]
       },
-      "ve": { "link": {}, "chuyen": [] }
+      "ve": { "link": {}, "thu_thap": {}, "chuyen": [] }
     }
+  ],
+  "de_xuat": [
+    { "ngay": "2026-08-06", "tu": "SGN", "den": "DAD", "sh": "VN 104", "dep": "06:30",
+      "hang": "Vietnam Airlines", "url": "https://www.google.com/travel/flights/booking?tfs=…",
+      "chieu": "di", "cap": ["Cặp 1"], "ly_do": ["Rẻ nhất", "Top 3 rẻ nhất chiều"] }
   ],
   "log": [
     { "thoi_diem": "…", "cap": "Cặp 1", "nguon": "Traveloka",
@@ -45,3 +57,7 @@ Ghi sau **mỗi chặng one-way**, không đợi hết cặp. Nếu phiên đứ
 - `dep` / `arr` dạng `"HH:MM"` 24h.
 - Thứ tự nguồn trong `meta.nguon` chính là **thứ tự ưu tiên** của công thức `Giá chốt`.
 - `trang_thai` ∈ `OK` | `Không khả dụng` | `Lỗi`.
+- `thu_thap` theo chặng = giờ quét của từng nguồn cho đúng ngày bay đó. Thiếu thì workbook dùng `meta.thu_thap`.
+- `link_chuyen` = link trang đặt vé Google Flights của đúng chuyến, `""` nếu chưa có số hiệu.
+- `mua` chỉ có ở chuyến đã chạy bước xác nhận nơi mua (`references/gf-booking.md`). `ban` = người bán trên trang đặt vé, `loai` ∈ `Hãng hàng không` | `Đại lý`.
+- `de_xuat` = danh sách chuyến cần xác nhận nơi mua (Block C + top 3 mỗi chiều), mỗi chuyến một lần dù thuộc nhiều cặp. Sheet Mua vé dựng theo danh sách này.

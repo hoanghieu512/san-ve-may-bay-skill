@@ -12,7 +12,9 @@ https://www.google.com/travel/flights?q=Oneway%20flights%20from%20SGN%20to%20DAD
 
 **Số hiệu chuyến KHÔNG có trong danh sách.** Phải click nút có `aria-label` bắt đầu bằng `"Thông tin"` trên từng dòng rồi mới đọc được `VJ 628`, `VN 104`… → **lọc khung giờ TRƯỚC khi bung**, chỉ bung 8-10 dòng thay vì cả 39.
 
-**Regex số hiệu:** dùng `/(VN|VJ|QH|VU|BL|SP)\s?\d{2,4}/`. Đừng dùng `\b[A-Z]{2}\s?\d{2,4}\b` — text hiển thị là `Airbus A321VJ 628`, chữ `1` liền `V` nên không có word boundary, sẽ trượt.
+**Bung dòng phải đợi trang hydrate xong.** Thử 23/10/2026 qua Playwright: click ngay sau khi `li.pIav2d` vừa xuất hiện thì không dòng nào bung; đợi thêm ~3 giây thì bung đủ 10/10, kể cả click bằng JS (`element.click()`). Vì vậy `gf_extract.js` dặn chờ ~8 giây sau navigate.
+
+**Regex số hiệu:** dùng `/(VN|VJ|QH|VU|BL|9G)\s?\d{2,4}/`. Mã của Sun PhuQuoc Airways là **`9G`** (trang hiện `Airbus A321neo9G 954`); bản cũ ghi `SP` nên luôn trượt số hiệu hãng này. Đừng dùng `\b[A-Z]{2}\s?\d{2,4}\b`: text hiển thị là `Airbus A321VJ 628`, chữ `1` liền `V` nên không có word boundary, sẽ trượt.
 
 **Nhận diện dòng chuyến bay phải dùng `aria-label` "Thời gian khởi hành", KHÔNG dùng mã sân bay.** Dòng chưa bung hiển thị `SGN–DAD`; sau khi bung, cùng dòng đó đổi sang `08:25Cảng hàng không quốc tế Đà Nẵng (DAD)`. Mọi regex kiểu `[A-Z]{3}–[A-Z]{3}` sẽ khớp ở lượt đọc đầu (nên vẫn bung được) rồi loại sạch dòng ở lượt đọc thứ hai — kết quả trả về **rỗng hoàn toàn mà không báo lỗi**. Bẫy này đã thực sự xảy ra.
 
@@ -23,6 +25,14 @@ https://www.google.com/travel/flights?q=Oneway%20flights%20from%20SGN%20to%20DAD
 **Dòng lồng nhau:** các `<li>` chứa nhau. Lọc `rows.filter(x => !rows.some(o => o!==x && x.contains(o)))`. Dòng chưa bung có `arr === dep`; ưu tiên bản có `arr` khác `dep`.
 
 **Giá đã gồm thuế + phí bắt buộc** cho 1 người lớn (Google ghi rõ). Chưa gồm phí hành lý ký gửi.
+
+**Giá ở danh sách thường là giá của hãng, chưa chắc là giá mua thấp nhất.** Bấm vào một chuyến (một chiều) là sang trang đặt vé `/travel/flights/booking?tfs=...` liệt kê từng người bán kèm giá. VJ 632 ngày 14/11/2026: danh sách 742.061 ₫ (Vietjet), đại lý Jettzy 679.301 ₫. Link trang đặt vé dựng được từ số hiệu mà không cần bấm, xem `references/gf-booking.md`.
+
+**Codeshare:** chuyến Pacific Airlines hiện dưới tên `Vietnam Airlines` kèm dòng "Do Pacific Airlines khai thác", số hiệu mã VN (vd `VN 6030`).
+
+**Số hiệu dùng NBSP** (`VJ\u00a0636`), không phải dấu cách thường. Không chuẩn hoá thì Ctrl+F "VJ 636" trong Excel không ra. `gf_extract.js` và `merge_sources.py` đều đã thay bằng dấu cách.
+
+**Captcha theo lượng truy cập.** 23/10/2026, từ một IP cloud: khoảng 30 lượt tải trang Google Flights (danh sách + trang đặt vé, nhiều context trắng) trong khoảng 40 phút thì bị trang "Hệ thống của chúng tôi đã phát hiện thấy lưu lượng truy cập bất thường". IP dân dụng ở nhà có thể chịu được nhiều hơn, chưa đo. Trang captcha **không có dòng chuyến bay nào**, nên trước v1.5.0 `gf_extract.js` trả về y như "khung giờ này không có chuyến". Giờ nó trả `# CHAN: ...` (captcha) hoặc `# CANH BAO: 0 dong ...` (trang trống), còn `gf_booking.js` dừng và trả `dung`. Gặp một trong hai: dừng, báo người dùng (SKILL.md §1.5), không quét tiếp.
 
 **"Phổ thông cao cấp"** là mục riêng cuối danh sách — giá cao hơn hẳn, không cùng hạng vé. Hỏi người dùng có tính vào không.
 

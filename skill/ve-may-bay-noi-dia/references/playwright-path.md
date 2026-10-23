@@ -102,7 +102,12 @@ Tỉ lệ này *tăng* theo số chặng vì một `browser_run_code_unsafe` ch�
 ## Google Flights
 
 `browser_evaluate` trên `li.pIav2d` trả toàn bộ row text trong một lượt, không scroll,
-không ảnh, không bị chặn. Vẫn cần bung từng dòng nếu muốn số hiệu chuyến — xem `site-quirks.md`.
+không ảnh, không bị chặn. Vẫn cần bung từng dòng nếu muốn số hiệu chuyến: xem `site-quirks.md`.
+
+**Trang đặt vé theo từng chuyến** (bước xác nhận nơi mua): `scripts/gf_booking.js` mở
+lần lượt link `booking?tfs=...` trong một call, mỗi trang 1–2,5 giây, tự dừng ở 25 giây
+và trả phần còn lại. Đo 23/10/2026 từ Playwright headless: không captcha, không consent.
+Xem `references/gf-booking.md`.
 
 ## An toàn
 

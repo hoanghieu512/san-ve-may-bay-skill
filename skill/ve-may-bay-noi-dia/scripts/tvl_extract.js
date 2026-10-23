@@ -1,4 +1,8 @@
-/* Traveloka — trích chuyến bay thẳng, GIÁ RẺ NHẤT mỗi chuyến, trong một khung giờ.
+/* Traveloka: trích chuyến bay thẳng, GIÁ RẺ NHẤT mỗi chuyến, trong một khung giờ.
+ *
+ * TRẢ VỀ (__out): dòng đầu "# luc ..." = thời điểm quét (ghi vào `_thu_thap` của file thô),
+ * sau đó mỗi dòng "giờ đi ; giờ đến ; hãng ; giá ; hành lý" -> cot ["dep","arr","hang","gia","bag"].
+ * Đường Chrome không có số hiệu chuyến.
  *
  * Traveloka virtualize danh sách: scroll bằng JS KHÔNG nạp thêm dòng.
  * Vì vậy script này tách làm 2 phần và phải xen kẽ với scroll THẬT.
@@ -46,14 +50,15 @@ window.__cap = function (lo, hi) {
 };
 
 window.__out = function () {
-  return Object.values(window.__acc)
+  const luc = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).replace(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2}).*$/, '$3/$2/$1 $4') + ' (giờ VN)';
+  return ['# luc ' + luc].concat(Object.values(window.__acc)
     .sort((a, b) => a.dep.localeCompare(b.dep))
-    .map(o => [o.dep, o.arr, o.hang, o.gia, o.bag].join(' ; '))
+    .map(o => [o.dep, o.arr, o.hang, o.gia, o.bag].join(' ; ')))
     .join('\n');
 };
 
 window.__filter = function (name) {
-  // [0] = khối "Giờ khởi hành"; [1] = khối "Giờ đến nơi" — luôn lấy [0]
+  // [0] = khối "Giờ khởi hành"; [1] = khối "Giờ đến nơi": luôn lấy [0]
   const e = [...document.querySelectorAll('div,label,span')]
     .filter(x => (x.innerText || '').trim() === name)[0];
   if (!e) return false;

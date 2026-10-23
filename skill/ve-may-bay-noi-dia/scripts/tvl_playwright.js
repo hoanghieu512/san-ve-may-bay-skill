@@ -1,9 +1,12 @@
-/* Traveloka qua Playwright MCP — quét nhiều chặng trong MỘT tool call.
+/* Traveloka qua Playwright MCP: quét nhiều chặng trong MỘT tool call.
  *
  * DÙNG: dán vào mcp__playwright__browser_run_code_unsafe, sửa LEGS + WINDOW ở đầu.
  * Trả về text gọn (~40 dòng/chặng), không screenshot, không file.
+ * Mỗi chặng: dòng "=== ngày :: luc DD/MM/YYYY HH:MM (giờ VN) :: ..." (giờ quét, ghi vào
+ * `_thu_thap` của file thô), rồi mỗi dòng "giờ đi ; giờ đến ; số hiệu ; hãng ; giá"
+ * -> cot ["dep","arr","sh","hang","gia"].
  *
- * ĐỌC references/playwright-path.md TRƯỚC — có một bẫy làm mất dữ liệu im lặng.
+ * ĐỌC references/playwright-path.md TRƯỚC: có một bẫy làm mất dữ liệu im lặng.
  */
 async (page) => {
   // ---- sửa 3 dòng này ----
@@ -33,7 +36,8 @@ async (page) => {
     const payload = raw ? await raw : null;   // <-- BẮT BUỘC await ở đây
     page.off('response', handler);
 
-    if (!payload) { out.push(`=== ${d} :: FAIL — khong bat duoc payload`); continue; }
+    const luc = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).replace(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2}).*$/, '$3/$2/$1 $4') + ' (giờ VN)';
+    if (!payload) { out.push(`=== ${d} :: luc ${luc} :: FAIL: khong bat duoc payload`); continue; }
 
     const data = payload.data || {};
     const res  = data.searchResults || [];
@@ -57,12 +61,12 @@ async (page) => {
     const rows  = Object.values(best).sort((x, y) => x.dep.localeCompare(y.dep));
     const hangs = [...new Set(rows.map(r => r.a))];
 
-    // SANITY CHECK — thieu cai nay thi loi mat du lieu tai dien ma khong ai biet
+    // SANITY CHECK: thieu cai nay thi loi mat du lieu tai dien ma khong ai biet
     const warn = [];
-    if (res.length < 110) warn.push(`raw=${res.length} THAP BAT THUONG — nghi body bi cat, QUET LAI`);
-    if (hangs.length < 3) warn.push(`chi ${hangs.length} hang — nghi thieu du lieu`);
+    if (res.length < 110) warn.push(`raw=${res.length} THAP BAT THUONG: nghi body bi cat, QUET LAI`);
+    if (hangs.length < 3) warn.push(`chi ${hangs.length} hang: nghi thieu du lieu`);
 
-    out.push(`=== ${d} :: raw=${res.length} -> ${rows.length} chuyen | hang: ${hangs.join('/')}`
+    out.push(`=== ${d} :: luc ${luc} :: raw=${res.length} -> ${rows.length} chuyen | hang: ${hangs.join('/')}`
              + (warn.length ? '\n!!! ' + warn.join(' ; ') : ''));
     out.push(rows.map(r => [r.dep, r.arr, r.f, r.a, r.p].join(' ; ')).join('\n'));
 
