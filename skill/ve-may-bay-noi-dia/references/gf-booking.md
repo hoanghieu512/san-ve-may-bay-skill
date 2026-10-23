@@ -88,15 +88,15 @@ Lưu **nguyên văn** ra `gf_booking_raw.json` trong thư mục run, rồi khai 
 |---|---|---|
 | `OK` | Đọc được người bán, giờ đi khớp | Gắn vào chuyến, lên sheet Mua vé |
 | `Không khả dụng` | Google báo "hành trình trước đây bạn chọn bây giờ không còn nữa": hết bán, hết chỗ, hoặc sai số hiệu | Log + dòng đỏ ở Mua vé |
-| `Lỗi` | Trang không nạp trong 15s, giờ đi không khớp, hoặc không đọc được người bán nào (nghi Google đổi giao diện) | Log + dòng đỏ ở Mua vé |
+| `Lỗi` | Không mở được trang (lỗi mạng), trang không nạp trong 15s, giờ đi không khớp, hoặc không đọc được người bán nào (nghi Google đổi giao diện) | Log + dòng đỏ ở Mua vé |
 
-`dung` khác rỗng = gặp captcha hoặc trang consent: script dừng ngay, các chuyến chưa làm nằm trong `con_lai`. Báo người dùng, chờ (SKILL.md §1.5).
+`dung` khác rỗng = gặp captcha hoặc trang consent: script dừng ngay. Chuyến đang mở lúc bị chặn và mọi chuyến sau nó nằm trong `con_lai`, để lần chạy lại (khi hết bị chặn) thử lại đủ. Báo người dùng, chờ (SKILL.md §1.5).
 
 **Sanity check có sẵn trong script**, đừng bỏ: giờ đi phải xuất hiện trong khối chuyến đã chọn (bắt link dựng sai chuyến), phải có ít nhất một người bán, người bán nào cũng phải có giá. Thiếu check này thì Google đổi giao diện sẽ cho ra 0 người bán mà không ai biết.
 
 ## Thời gian
 
-Mỗi trang nạp 1–2,5 giây (đo 23/10/2026). `BUDGET_MS = 25000` dừng trước trần thời gian của một MCP request (xem `playwright-path.md`: một call quá dài bị reset về `about:blank`), nên mỗi call làm được khoảng 8 chuyến. Phần chưa làm trả về trong `con_lai`: gọi lại với `FLIGHTS = con_lai`, lưu file kết quả thứ hai, khai báo cả hai file trong `xac_nhan` (file sau đè file trước nếu trùng chuyến).
+Mỗi trang nạp 1–2,5 giây (đo 23/10/2026). `BUDGET_MS = 25000` dừng trước trần thời gian của một MCP request (xem `playwright-path.md`: một call quá dài bị reset về `about:blank`), nên mỗi call làm được khoảng 8 chuyến. Ngân sách tính cho **cả chuyến**, không chỉ lúc bắt đầu: mỗi bước chờ bị cắt theo phần ngân sách còn lại, chuyến bị cắt ngang không ghi `Lỗi` mà chuyển vào `con_lai`. Phần chưa làm trả về trong `con_lai`: gọi lại với `FLIGHTS = con_lai`, lưu file kết quả thứ hai, khai báo cả hai file trong `xac_nhan` theo thứ tự chạy. Chuyến có nhiều kết quả thì merge lấy kết quả `OK` mới nhất, nên một lượt chạy lại bị lỗi không xoá mất kết quả tốt đã có.
 
 ## Không có Playwright
 

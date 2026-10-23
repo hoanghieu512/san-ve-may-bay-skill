@@ -62,7 +62,7 @@ Chuyến nào có số hiệu (từ bất kỳ nguồn nào) được dựng s�
 | `nguon` | ✅ | **Thứ tự = thứ tự ưu tiên** của `Giá chốt` trong workbook |
 | `san_bay` | ✅ | Dùng để dựng link nguồn cho từng chiều |
 | `raw` | ✅ | `{"di":…, "ve":…}` nếu mỗi chiều một file; `{"file":…}` nếu một file chứa cả hai. `cot` là tên cột theo đúng thứ tự trong mảng thô. `thu_thap` (chuỗi) = một mốc giờ cho cả nguồn, chỉ dùng khi file thô không có `_thu_thap` |
-| `xac_nhan` | ✅ trước khi build | Danh sách file kết quả của `gf_booking.js` (bước xác nhận nơi mua). File sau đè file trước nếu trùng chuyến. Thiếu khoá này: merge vẫn chạy nhưng in cảnh báo và ghi Log |
+| `xac_nhan` | ✅ trước khi build | Danh sách file kết quả của `gf_booking.js` (bước xác nhận nơi mua), theo thứ tự chạy. Một chuyến có nhiều kết quả thì lấy kết quả `OK` mới nhất; không có `OK` thì lấy kết quả mới nhất. Kết quả có giờ đi không khớp chuyến thì bỏ qua. Thiếu khoá này: merge vẫn chạy nhưng in cảnh báo và ghi Log |
 | `caps` | ✅ | `ten` mặc định `"Cặp <id>"`, `thu` để trống được |
 | `loai_hang` | | Loại hãng ở **mọi** nguồn trước khi tính. Nhớ ghi lý do vào `log_them` |
 | `hang_alias` | | Bổ sung bảng chuẩn hoá tên hãng dựng sẵn trong script |

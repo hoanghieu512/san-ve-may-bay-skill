@@ -279,9 +279,10 @@ def build(cp, out):
         src_a = next((s for s in SRC if fa.get('gia', {}).get(s) is not None), SRC[0])
         src_b = next((s for s in SRC if fb.get('gia', {}).get(s) is not None), SRC[0])
         canh_bao = []
-        for nhan, f, b in (('Chiều đi', fa, ba), ('Chiều về', fb, bb)):
-            if lech(f) >= NGUONG_DIEU_TRA:
-                canh_bao.append('%s: hai nguồn lệch %.0f%%, đọc Log' % (nhan, lech(f) * 100))
+        for nhan, f in (('Chiều đi', fa), ('Chiều về', fb)):
+            d = lech(f)
+            if d >= NGUONG_DIEU_TRA:
+                canh_bao.append('%s: hai nguồn lệch %.0f%%, đọc Log' % (nhan, d * 100))
             if (f.get('mua') or {}).get('trang_thai') != 'OK':
                 canh_bao.append('%s: chưa xác nhận nơi mua' % nhan)
 
@@ -347,8 +348,10 @@ def build(cp, out):
     rr = 5
     n_ban = 0
     de_xuat = cp.get('de_xuat')
-    if not de_xuat:
+    if de_xuat is None:                      # checkpoint dựng bằng merge trước 1.5.0
         s4.cell(rr, 1, "Checkpoint không có danh sách đề xuất: chạy lại merge_sources.py (bản 1.5.0 trở lên).").font = F_WARN
+    elif not de_xuat:
+        s4.cell(rr, 1, "Không có chuyến nào có giá để đề xuất: xem sheet Log.").font = F_WARN
     for e in de_xuat or []:
         P = next((c for c in cp['caps'] if c['ten'] in e['cap']), None)
         if not P:
@@ -386,7 +389,7 @@ def build(cp, out):
                     cc = s4.cell(rr, col4["So với Giá chốt lúc quét"], b['gia'] / gc - 1)
                     cc.number_format = '+0.0%;-0.0%;0.0%'; cc.font = F_B
             link(s4, rr, col4["Link mua"], b['url'],
-                 "Mở trang đặt vé" if 'google.com/travel' in (b['url'] or '') else "Mở trang tìm kiếm")
+                 "Mở trang đặt vé" if b['nguon'] == 'Trang đặt vé Google Flights' else "Mở trang tìm kiếm")
             if b['gia'] is None:
                 s4.cell(rr, col4["Người bán"]).font = F_WARN
             for c in range(1, len(H4) + 1):
@@ -421,7 +424,7 @@ def build(cp, out):
     have = sum(1 for P in cp['caps'] for l in ('di', 've') for f in P[l]['chuyen']
                for s in SRC if f.get('gia', {}).get(s) is not None)
     canh_bao = sum(1 for P in cp['caps'] for l in ('di', 've') for f in P[l]['chuyen']
-                   if len(SRC) >= 2 and lech(f) >= NGUONG_DIEU_TRA)
+                   if lech(f) >= NGUONG_DIEU_TRA)
     xn = sum(1 for e in de_xuat or [] for P in cp['caps'] if P['ten'] == e['cap'][0]
              for f in P[e['chieu']]['chuyen']
              if f['dep'] == e['dep'] and f['hang'] == e['hang'] and (f.get('mua') or {}).get('trang_thai') == 'OK')

@@ -6,8 +6,9 @@
  *           không đăng nhập. Đọc references/gf-booking.md trước.
  * TRẢ VỀ: chuỗi JSON { ket_qua: [...], con_lai: [...], dung: "..." }.
  *         Lưu NGUYÊN VĂN ra file (vd gf_booking_raw.json) rồi khai báo trong job.json
- *         ở khoá "xac_nhan". `con_lai` khác rỗng = hết ngân sách thời gian, gọi lại
- *         script với FLIGHTS = con_lai, rồi gộp các mảng ket_qua vào cùng một file.
+ *         ở khoá "xac_nhan". `con_lai` khác rỗng = hết ngân sách thời gian (gọi lại
+ *         với FLIGHTS = con_lai, lưu file thứ hai, khai báo cả hai), hoặc bị chặn khi
+ *         `dung` khác rỗng (dừng, báo người dùng; chuyến dính chặn cũng nằm trong con_lai).
  *
  * Link trang đặt vé (tham số tfs) do merge_sources.py dựng từ ngày + chặng + số hiệu.
  * Đã kiểm chứng 23/10/2026: mở ở context trắng, không cookie, ra đúng chuyến 3/3 hãng.
@@ -19,6 +20,7 @@ async (page) => {
   ];
   const BUDGET_MS = 25000;   // dừng sớm, tránh chạm trần thời gian của một MCP request
   const WAIT_MS   = 15000;   // tối đa chờ một trang đặt vé
+  const MIN_MS    = 4000;    // ngân sách còn ít hơn mức này thì để chuyến sang con_lai
   // -----------------------------
 
   const t0 = Date.now();
@@ -29,29 +31,56 @@ async (page) => {
     .replace(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2}).*$/, '$3/$2/$1 $4') + ' (giờ VN)';
   const vnd = s => +s.replace(/[^\d]/g, '');
 
+  // Sau một goto lỗi, Chromium còn đang chuyển sang trang lỗi: goto kế tiếp bị
+  // "interrupted by another navigation" và chuyến hợp lệ sau đó bị ghi Lỗi oan. Thử lại.
+  const mo = async (url, timeout) => {
+    for (let k = 0; k < 3; k++) {
+      try { await page.goto(url, { waitUntil: 'domcontentloaded', timeout }); return true; }
+      catch (e) {
+        if (!/interrupted by another navigation/.test(e.message)) return false;
+        await page.waitForTimeout(300);
+      }
+    }
+    return false;
+  };
+
   const ket_qua = [], con_lai = [];
   let dung = '';
 
   for (const f of FLIGHTS) {
-    if (dung || Date.now() - t0 > BUDGET_MS) { con_lai.push(f); continue; }
+    // Ngân sách tính cho CẢ chuyến, không chỉ lúc bắt đầu: một chuyến chờ tối đa 2 x WAIT_MS,
+    // đủ để một call vượt trần MCP và mất sạch ket_qua (playwright-path.md).
+    const con = BUDGET_MS - (Date.now() - t0);
+    if (dung || con < MIN_MS) { con_lai.push(f); continue; }
+    const han = Math.min(WAIT_MS, con);
     const r = { ...f, luc: '', trang_thai: 'Lỗi', ly_do: '', chuyen: '', ban: [], hanh_ly: [] };
-    try {
-      await page.goto(f.url, { waitUntil: 'domcontentloaded', timeout: WAIT_MS });
+    // Về trang trắng trước: goto lỗi thì DOM còn lại là trang trắng, không phải trang
+    // đặt vé của chuyến trước (hai chuyến cùng giờ đi sẽ qua được check giờ đi).
+    await mo('about:blank', 5000);
+    const mo_duoc = await mo(f.url, han);
+    if (mo_duoc) try {
       await page.waitForFunction(([a, b]) => {
         const t = document.body ? document.body.innerText : '';
         return t.includes(a) || t.includes(b) || /lưu lượng truy cập bất thường|unusual traffic/i.test(t);
-      }, [OK_MARK, GONE_MARK], { timeout: WAIT_MS });
+      }, [OK_MARK, GONE_MARK], { timeout: Math.max(500, Math.min(han, BUDGET_MS - (Date.now() - t0))) });
     } catch (e) { /* xử lý theo nội dung trang ở dưới */ }
     r.luc = luc();
 
     const url = page.url();
-    const t = (await page.evaluate(() => document.body ? document.body.innerText : ''))
+    // goto lỗi (mạng, timeout) có thể để trang giữa chừng điều hướng: evaluate ném lỗi
+    // "Execution context was destroyed" và làm chết cả lượt, mất hết ket_qua đã đọc.
+    const t = (await page.evaluate(() => document.body ? document.body.innerText : '').catch(() => ''))
       .replace(/\u00a0/g, ' ');
     if (/\/sorry\/|consent\.google/.test(url) || BLOCK_RE.test(t)) {
       // Captcha hoặc trang consent: SKILL.md §1.5, dừng toàn bộ, báo người dùng.
-      // Đã gặp 23/10/2026 sau ~25 lượt tải trang Google liên tiếp từ một IP.
-      r.ly_do = 'Google chặn (captcha/consent) tại ' + url.slice(0, 80);
-      ket_qua.push(r); dung = r.ly_do; continue;
+      // Đã gặp 23/10/2026 sau ~30 lượt tải trang Google từ một IP. Chuyến này chưa đọc
+      // được gì nên trả về con_lai cùng các chuyến sau, để lần chạy lại thử lại nó.
+      dung = 'Google chặn (captcha/consent) tại ' + url.slice(0, 80);
+      con_lai.push(f); continue;
+    }
+    if (!t.includes(OK_MARK) && !t.includes(GONE_MARK) && Date.now() - t0 >= BUDGET_MS - 500) {
+      // Trang chưa nạp xong vì hết ngân sách, không phải vì trang lỗi: để lần sau làm.
+      con_lai.push(f); continue;
     }
     if (t.includes(GONE_MARK)) {
       r.trang_thai = 'Không khả dụng';
@@ -62,7 +91,8 @@ async (page) => {
     const iOpt = t.indexOf('Tùy chọn đặt vé');
     const iEnd = t.indexOf(OK_MARK, iOpt);
     if (iSel < 0 || iOpt < 0 || iEnd < 0) {
-      r.ly_do = 'Trang đặt vé không nạp xong trong ' + WAIT_MS / 1000 + 's: '
+      r.ly_do = (mo_duoc ? 'Trang đặt vé không nạp xong trong ' + Math.round(han / 1000) + 's: '
+                         : 'Không mở được trang đặt vé (lỗi mạng hoặc điều hướng): ')
               + t.slice(0, 160).replace(/\n+/g, ' | ');
       ket_qua.push(r); continue;
     }

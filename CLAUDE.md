@@ -52,7 +52,7 @@ SKILL.md có dòng version + ngày cập nhật ở hai chỗ: `metadata.version
 
 Đổi nội dung skill thì: bump version → cập nhật ngày → tạo git tag khớp (`git tag vX.Y.Z && git push --tags`). Tag là bắt buộc vì chính SKILL.md dặn người dùng đối chiếu version đang nạp với `git tag` mới nhất ở repo nguồn để biết bản của họ có cũ không.
 
-Tag mới nhất hiện tại: `v1.4.0`. SKILL.md đã lên `v1.5.0`: tag `v1.5.0` sau khi nhánh được merge vào main, rồi sửa dòng này.
+Tag mới nhất hiện tại: `v1.5.0`.
 
 ## `runs/` không được commit
 

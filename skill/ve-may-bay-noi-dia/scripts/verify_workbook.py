@@ -130,8 +130,9 @@ def verify(cp, path):
                 v = ws.cell(r, col['Giá thấp nhất (mọi nguồn)']).value
                 k(gan(v, min(g)) if g else v == NA, '%s: giá thấp nhất = %r, đúng ra %r' % (nhan, v, min(g) if g else NA))
                 nm = ws.cell(r, col['Nguồn giá thấp nhất']).value or ''
-                k(not g or all(f['gia'].get(s) == min(g) for s in nm.split(', ')),
-                  '%s: nguồn giá thấp nhất "%s" sai' % (nhan, nm))
+                dung = {s for s in src if f.get('gia', {}).get(s) == min(g)} if g else {NA}
+                k(set(nm.split(', ')) == dung, '%s: nguồn giá thấp nhất "%s", đúng ra "%s"'
+                  % (nhan, nm, ', '.join(s for s in src if s in dung) or NA))
                 v = ws.cell(r, col['Chênh lệch max %']).value
                 if len(g) >= 2:
                     k(isinstance(v, (int, float)) and abs(v - (max(g) - min(g)) / min(g)) < 1e-6,
@@ -173,8 +174,12 @@ def verify(cp, path):
     tong = [ws.cell(r, col['Tổng theo Giá chốt']).value for r in rows]
     k(tong == sorted(tong), 'Summary: chưa sắp theo Tổng theo Giá chốt tăng dần')
     for r in rows:
-        ten = ws.cell(r, 1).value.split(' (')[0]
-        P = next(p for p in cp['caps'] if p['ten'] == ten)
+        o = ws.cell(r, 1).value or ''
+        # Ô ghi "<tên> (<ngày đi> → <ngày về>)"; tên cặp tự đặt có thể chứa " (" nên khớp cả chuỗi.
+        P = next((p for p in cp['caps'] if o == '%s (%s → %s)' % (p['ten'], p['ngay_di'], p['ngay_ve'])), None)
+        if not k(P is not None, 'Summary dòng %d: "%s" không khớp cặp nào trong checkpoint' % (r, o)):
+            continue
+        ten = P['ten']
         k(ten in reC and gan(ws.cell(r, col['Tổng theo Giá chốt']).value, reC[ten][0]),
           'Summary %s: tổng không khớp Block C' % ten)
         for h_link in ('Link chuyến đi', 'Link chuyến về'):

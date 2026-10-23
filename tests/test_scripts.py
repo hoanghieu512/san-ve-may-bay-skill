@@ -236,6 +236,28 @@ class TestMerge(unittest.TestCase):
         self.assertIn('VJ 632', shs)
         self.assertFalse(any('\u00a0' in x for x in shs))
 
+    def test_xac_nhan_prefers_latest_ok_over_later_failure(self):
+        job = make_job(self.d)
+        with open(os.path.join(self.d, 'gf_booking_raw.json'), encoding='utf-8') as fh:
+            first = json.load(fh)
+        first['dung'] = 'Google chặn (captcha/consent) tại https://www.google.com/sorry/index'
+        write(self.d, 'gf_booking_raw.json', first)
+        retry = dict(first['ket_qua'][0], trang_thai='Lỗi', ly_do='Trang đặt vé không nạp xong', ban=[])
+        write(self.d, 'gf_booking_raw_2.json', {'ket_qua': [retry], 'con_lai': [], 'dung': ''})
+        with open(job, encoding='utf-8') as fh:
+            j = json.load(fh)
+        j['xac_nhan'] = ['gf_booking_raw.json', 'gf_booking_raw_2.json']
+        write(self.d, 'job.json', j)
+        cp_path = os.path.join(self.d, 'cp.json')
+        run('merge_sources.py', job, cp_path)
+        with open(cp_path, encoding='utf-8') as fh:
+            cp = json.load(fh)
+        vj = [f for f in cp['caps'][0]['di']['chuyen'] if f['sh'] == 'VJ 632'][0]
+        self.assertEqual(vj['mua']['trang_thai'], 'OK')            # earlier OK beats later failure
+        blocked = [e for e in cp['log'] if 'Bị chặn' in e['ly_do']]
+        self.assertTrue(blocked)
+        self.assertTrue(all(e['trang_thai'] != 'Lỗi' for e in blocked))   # superseded by a later file
+
     def test_no_em_dash_in_generated_text(self):
         cp, _ = self.merge()
         self.assertNotIn(EM_DASH, json.dumps(cp, ensure_ascii=False))
@@ -335,6 +357,106 @@ class TestWorkbook(unittest.TestCase):
                         os.path.join(self.d, 'rc2'), bad], capture_output=True, timeout=180, check=True)
         p = run('verify_workbook.py', self.cp, os.path.join(self.d, 'rc2', 'bad.xlsx'), check=False)
         self.assertNotEqual(p.returncode, 0)
+
+
+def recalc(xlsx, outdir):
+    subprocess.run(['soffice', '--headless', '--calc', '--convert-to', 'xlsx', '--outdir', outdir, xlsx],
+                   capture_output=True, timeout=180, check=True)
+    return os.path.join(outdir, os.path.basename(xlsx))
+
+
+class TestBuildEdgeCases(unittest.TestCase):
+    def test_empty_de_xuat_is_not_reported_as_old_checkpoint(self):
+        d = tempfile.mkdtemp()
+        try:
+            cp = {'meta': {'chang': 'X', 'khach': '1 người lớn', 'hang_ve': 'Phổ thông', 'loai': 'Bay thẳng',
+                           'thu_thap': '23/10/2026 10:00 (giờ VN)', 'nguon': ['Google Flights']},
+                  'caps': [{'id': 1, 'ten': 'Cặp 1', 'ngay_di': '14/11/2026', 'ngay_ve': '17/11/2026', 'thu': '',
+                            'di': {'link': {}, 'chuyen': []}, 've': {'link': {}, 'chuyen': []}}],
+                  'de_xuat': [], 'log': []}
+            write(d, 'cp.json', cp)
+            run('build_workbook.py', os.path.join(d, 'cp.json'), os.path.join(d, 'out.xlsx'))
+            from openpyxl import load_workbook
+            ws = load_workbook(os.path.join(d, 'out.xlsx'))['Mua vé']
+            txt = ' '.join(str(c.value) for row in ws.iter_rows() for c in row if c.value)
+            self.assertNotIn('bản 1.5.0', txt)
+            self.assertIn('Không có chuyến nào', txt)
+        finally:
+            shutil.rmtree(d)
+
+
+@unittest.skipUnless(shutil.which('soffice'), 'LibreOffice not installed')
+class TestVerifyEdgeCases(unittest.TestCase):
+    def setUp(self):
+        self.d = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.d)
+
+    def build(self, edit_job=None, edit_gf=None):
+        job = make_job(self.d, with_xac_nhan=False)
+        if edit_gf:
+            with open(os.path.join(self.d, 'gf_di.json'), encoding='utf-8') as fh:
+                gf = json.load(fh)
+            edit_gf(gf)
+            write(self.d, 'gf_di.json', gf)
+        if edit_job:
+            with open(job, encoding='utf-8') as fh:
+                j = json.load(fh)
+            edit_job(j)
+            write(self.d, 'job.json', j)
+        cp, xlsx = os.path.join(self.d, 'cp.json'), os.path.join(self.d, 'out.xlsx')
+        run('merge_sources.py', job, cp)
+        run('build_workbook.py', cp, xlsx)
+        return cp, recalc(xlsx, os.path.join(self.d, 'rc'))
+
+    def test_cap_name_with_parenthesis(self):
+        def ten(j):
+            j['caps'][0]['ten'] = 'Cặp 1 (Tết)'
+        cp, good = self.build(edit_job=ten)
+        p = run('verify_workbook.py', cp, good, check=False)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+
+    def test_min_source_must_list_every_tied_source(self):
+        def tie(gf):
+            gf['2026-11-14'][0][4] = 700000                 # VJ 632: Google Flights == Traveloka
+        cp, good = self.build(edit_gf=tie)
+        self.assertEqual(run('verify_workbook.py', cp, good, check=False).returncode, 0)
+        from openpyxl import load_workbook
+        wb = load_workbook(good)
+        ws = wb['Data']
+        h = header_row(ws)
+        col = {ws.cell(h, c).value: c for c in range(1, ws.max_column + 1)}
+        r = next(r for r in range(h + 1, ws.max_row + 1) if ws.cell(r, col['Số hiệu chuyến']).value == 'VJ 632')
+        self.assertEqual(ws.cell(r, col['Nguồn giá thấp nhất']).value, 'Google Flights, Traveloka')
+        ws.cell(r, col['Nguồn giá thấp nhất']).value = 'Traveloka'      # drop one tied source
+        bad = os.path.join(self.d, 'bad.xlsx')
+        wb.save(bad)
+        p = run('verify_workbook.py', cp, recalc(bad, os.path.join(self.d, 'rc2')), check=False)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn('nguồn giá thấp nhất', p.stdout)
+
+
+def node_env():
+    """Env where require('playwright') resolves, or None if node/playwright is missing."""
+    if not shutil.which('node'):
+        return None
+    env = dict(os.environ)
+    root = subprocess.run(['npm', 'root', '-g'], capture_output=True, text=True).stdout.strip()         if shutil.which('npm') else ''
+    if root:
+        env['NODE_PATH'] = os.pathsep.join(x for x in (env.get('NODE_PATH'), root) if x)
+    ok = subprocess.run(['node', '-e', "require('playwright')"], capture_output=True, env=env)
+    return env if ok.returncode == 0 else None
+
+
+class TestGfBookingOffline(unittest.TestCase):
+    @unittest.skipUnless(node_env(), 'node + playwright not available')
+    def test_offline_scenarios(self):
+        p = subprocess.run(['node', os.path.join(ROOT, 'tests', 'gf_booking_offline.js'),
+                            os.path.join(SCRIPTS, 'gf_booking.js')],
+                           capture_output=True, text=True, env=node_env(), timeout=180)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(p.stdout.count('PASS'), 6, p.stdout)
 
 
 class TestVerifyTies(unittest.TestCase):

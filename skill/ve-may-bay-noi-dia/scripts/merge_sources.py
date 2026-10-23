@@ -239,17 +239,17 @@ def danh_sach_de_xuat(caps, nguon, ap):
 
 
 def doc_xac_nhan(job, base):
-    """-> ({(ngày, từ, đến, số hiệu): [kết quả]}, [lý do dừng]). File sau đè file trước."""
+    """-> ({(ngày, từ, đến, số hiệu): [kết quả, file mới trước]}, [(lý do dừng, có phải file cuối)])."""
     files = job.get('xac_nhan', [])
     files = [files] if isinstance(files, str) else files
     kq, dung = {}, []
-    for path in files:
+    for idx, path in enumerate(files):
         d = doc_json(base, path)
         if isinstance(d, str):                   # dán nguyên chuỗi JSON gf_booking trả về
             d = json.loads(d)
         rows = d.get('ket_qua', []) if isinstance(d, dict) else d
         if isinstance(d, dict) and d.get('dung'):
-            dung.append(d['dung'])
+            dung.append((d['dung'], idx == len(files) - 1))
         for r in rows:
             p = so_hieu(r.get('sh'))
             if p:
@@ -267,15 +267,22 @@ def gan_xac_nhan(job, base, caps, de_xuat, ts):
                         ghi_chu='Sheet Mua vé chỉ có giá lúc quét, chưa có danh sách người bán'))
         return log, 0
     kq, dung = doc_xac_nhan(job, base)
-    for ly_do in dung:
-        log.append(dict(thoi_diem=ts, cap='(toàn bộ)', nguon=nhom, trang_thai='Lỗi',
-                        ly_do='Bị chặn khi xác nhận nơi mua: %s' % ly_do,
-                        ghi_chu='SKILL.md §1.5: dừng, báo người dùng'))
+    for ly_do, cuoi in dung:
+        if cuoi:
+            log.append(dict(thoi_diem=ts, cap='(toàn bộ)', nguon=nhom, trang_thai='Lỗi',
+                            ly_do='Bị chặn khi xác nhận nơi mua: %s' % ly_do,
+                            ghi_chu='SKILL.md §1.5: dừng, báo người dùng'))
+        else:                                    # đã có file chạy lại sau đó
+            log.append(dict(thoi_diem=ts, cap='(toàn bộ)', nguon=nhom, trang_thai='OK',
+                            ly_do='Bị chặn ở một lượt xác nhận trước: %s' % ly_do,
+                            ghi_chu='Đã chạy lại ở file sau trong xac_nhan'))
 
     def tim(ngay, o, d, f):
+        """Kết quả OK mới nhất; không có OK thì kết quả mới nhất. Giờ đi phải khớp."""
         p = so_hieu(f['sh'])
-        ds = kq.get((ngay, o, d, '%s %s' % p), []) if p else []
-        return next((r for r in ds if r.get('dep') == f['dep']), ds[0] if ds else None)
+        ds = [r for r in (kq.get((ngay, o, d, '%s %s' % p), []) if p else [])
+              if r.get('dep') in (None, '', f['dep'])]
+        return next((r for r in ds if r.get('trang_thai') == 'OK'), ds[0] if ds else None)
 
     ap = job['san_bay']
     for c in caps:
