@@ -2,20 +2,30 @@
 name: ve-may-bay-noi-dia
 description: Thu thập và đối chiếu giá vé máy bay nội địa Việt Nam từ nhiều nguồn, rồi xuất file Excel so sánh. Use when người dùng muốn so sánh giá vé, tìm vé rẻ, quét giá nhiều ngày bay, dò giá khứ hồi, hoặc lập bảng so sánh chuyến bay — ví dụ "so giá vé SGN đi Đà Nẵng tháng 8", "tìm vé rẻ nhất HAN-SGN mấy cuối tuần tới", "quét giá vé máy bay giúp huynh", "compare flight prices Vietnam domestic", "check vé Tết". KHÔNG dùng cho chặng quốc tế (logic nối chuyến và hạng vé khác hẳn).
 metadata:
-  version: "1.5.0"
-  updated: "2026-10-23"
+  version: "1.5.1"
+  updated: "2026-10-31"
   source: "https://github.com/hoanghieu512/san-ve-may-bay-skill"
 ---
 
 # Thu thập & so sánh giá vé nội địa VN
 
-**v1.5.0** · cập nhật 23/10/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
+**v1.5.1** · cập nhật 31/10/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
 
 Quét giá thật từ Google Flights / Traveloka, đối chiếu chéo, xác nhận nơi mua của các chuyến đề xuất, rồi xuất Excel 4 sheet. Đích cuối: người dùng mở file là biết **mua chuyến nào, ở người bán nào, giá bao nhiêu, bấm link nào**.
 
 > Người dùng hỏi skill này version mấy / có mới nhất không → đọc số trên, đối chiếu với
 > `git tag` mới nhất ở repo nguồn. Lệch nghĩa là bản đang nạp đã cũ, cần build lại gói
 > `.skill` rồi Save đè.
+
+## 0. Tiền kiểm đầu phiên — chạy TRƯỚC request quét đầu tiên
+
+Ba thứ dưới đây mỗi thứ chỉ mất một lệnh để biết, nhưng phát hiện muộn thì đã mất cả lượt quét: Google bật captcha sau khoảng 30 lượt tải trang, nên "quét lại" không phải chuyện chạy thêm một lệnh.
+
+1. **Mount thư mục dự án** bằng `request_cowork_directory`, tới thư mục chứa `runs/`. Chưa mount thì **dừng và hỏi người dùng**, đừng quét trước rồi tính sau: raw sẽ nằm trong scratchpad của phiên và mất khi phiên đóng. Yêu cầu nội dung mỗi thư mục run ở §8.
+2. **Định vị `recalc.py`** bằng đoạn dò ở §8. Nó thuộc skill `xlsx` của hệ thống, KHÔNG nằm trong skill này, và đường dẫn đổi theo phiên lẫn theo môi trường.
+3. **`which soffice`.** `recalc.py` cần LibreOffice.
+
+Thiếu (2) hoặc (3) thì vẫn quét được, nhưng phải **nói với người dùng ngay từ đầu** rằng bước recalc sẽ hỏng và file giao đi sẽ có mọi ô công thức đọc ra `None`. Để họ chọn: cài LibreOffice trước, hay nhận checkpoint + raw thay vì workbook hoàn chỉnh. Đừng để họ biết điều đó lúc file đã xuất xong.
 
 ## 1. Nguyên tắc bất di bất dịch
 
