@@ -2,14 +2,14 @@
 name: ve-may-bay-noi-dia
 description: Thu thập và đối chiếu giá vé máy bay nội địa Việt Nam từ nhiều nguồn, rồi xuất file Excel so sánh. Use when người dùng muốn so sánh giá vé, tìm vé rẻ, quét giá nhiều ngày bay, dò giá khứ hồi, hoặc lập bảng so sánh chuyến bay — ví dụ "so giá vé SGN đi Đà Nẵng tháng 8", "tìm vé rẻ nhất HAN-SGN mấy cuối tuần tới", "quét giá vé máy bay giúp huynh", "compare flight prices Vietnam domestic", "check vé Tết". KHÔNG dùng cho chặng quốc tế (logic nối chuyến và hạng vé khác hẳn).
 metadata:
-  version: "1.5.1"
-  updated: "2026-10-31"
+  version: "1.5.2"
+  updated: "2026-11-01"
   source: "https://github.com/hoanghieu512/san-ve-may-bay-skill"
 ---
 
 # Thu thập & so sánh giá vé nội địa VN
 
-**v1.5.1** · cập nhật 31/10/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
+**v1.5.2** · cập nhật 01/11/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
 
 Quét giá thật từ Google Flights / Traveloka, đối chiếu chéo, xác nhận nơi mua của các chuyến đề xuất, rồi xuất Excel 4 sheet. Đích cuối: người dùng mở file là biết **mua chuyến nào, ở người bán nào, giá bao nhiêu, bấm link nào**.
 
@@ -107,7 +107,8 @@ Chế độ khứ hồi của Google Flights trả về *tổng* khứ hồi khi
 
 **Chọn công cụ:**
 
-- Có Playwright MCP → dùng `scripts/tvl_playwright.js` cho Traveloka. Bắt thẳng JSON của API, không scroll, không ảnh. **Đọc `references/playwright-path.md` trước** — có một bẫy làm mất dữ liệu mà không báo lỗi.
+- Có Playwright MCP → dùng `scripts/tvl_playwright.js` cho Traveloka. Bắt thẳng JSON của API, không scroll, không ảnh. **Đọc `references/playwright-path.md` trước** — có một bẫy làm mất dữ liệu mà không báo lỗi, và một ngưỡng sanity check phải hiệu chỉnh theo chặng.
+- **Traveloka trả HTTP 403** (gặp 01/11/2026, chặn theo fingerprint Playwright): không vòng qua. Hỏi người dùng chọn chạy một nguồn Google Flights, thử lại qua Claude in Chrome, hay dừng. Chạy §5 trước thì biết mất mát thật bao nhiêu: Google Flights phủ đủ hãng khai thác thì gần như không mất gì. Chi tiết ở `playwright-path.md`.
 - Không có Playwright, hoặc trang cần đăng nhập → Claude in Chrome với `scripts/gf_extract.js` và `scripts/tvl_extract.js`.
 
 Đọc `references/site-quirks.md` trước khi chạm vào trang — nó chứa các bẫy đã mất công mới tìm ra (danh sách virtualized, nhiều hạng vé một chuyến, số hiệu chuyến ẩn).

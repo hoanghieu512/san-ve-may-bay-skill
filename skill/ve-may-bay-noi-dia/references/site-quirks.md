@@ -28,7 +28,7 @@ https://www.google.com/travel/flights?q=Oneway%20flights%20from%20SGN%20to%20DAD
 
 **Giá ở danh sách thường là giá của hãng, chưa chắc là giá mua thấp nhất.** Bấm vào một chuyến (một chiều) là sang trang đặt vé `/travel/flights/booking?tfs=...` liệt kê từng người bán kèm giá. VJ 632 ngày 14/11/2026: danh sách 742.061 ₫ (Vietjet), đại lý Jettzy 679.301 ₫. Link trang đặt vé dựng được từ số hiệu mà không cần bấm, xem `references/gf-booking.md`.
 
-**Codeshare:** chuyến Pacific Airlines hiện dưới tên `Vietnam Airlines` kèm dòng "Do Pacific Airlines khai thác", số hiệu mã VN (vd `VN 6030`).
+**Codeshare:** chuyến hãng khác hiện dưới tên `Vietnam Airlines` kèm dòng "Do ... khai thác", số hiệu mã VN. Đã gặp hai hãng: **Pacific Airlines** (vd `VN 6030`) và **Vietnam Air Service / VASCO** (`VN 8025`, DLI–SGN 19:45, đo 01/11/2026). Đừng suy ra hãng khai thác từ dải số hiệu: `8xxx` không có nghĩa là Pacific. Dòng "Do ... khai thác" **không hiện ở danh sách**, chỉ hiện ở khối "Các chuyến bay bạn đã chọn" của trang đặt vé, nên trước bước xác nhận nơi mua thì chưa biết. Người bán và giá vẫn là Vietnam Airlines.
 
 **Số hiệu dùng NBSP** (`VJ\u00a0636`), không phải dấu cách thường. Không chuẩn hoá thì Ctrl+F "VJ 636" trong Excel không ra. `gf_extract.js` và `merge_sources.py` đều đã thay bằng dấu cách.
 
@@ -61,6 +61,21 @@ https://www.traveloka.com/vi-vn/flight/fullsearch?ap=SGN.DAD&dt=06-08-2026.NA&ps
 **Không bán Bamboo Airways** (đã xác nhận trên 4 ngày khác nhau). Bộ lọc hãng của Traveloka không liệt kê Bamboo dù Google Flights có bán chuyến đó.
 
 **Giá đã all-in.** Nhãn hành lý (`0kg` / `1x23kg`) hiển thị ngay trên dòng — dùng để xác nhận đúng hạng không ký gửi.
+
+**01/11/2026: HTTP 403 cho Chromium của Playwright.** Chặn theo fingerprint, không phải IP. Xem `playwright-path.md` mục Rate-limit để biết cách xử lý và ba đường thay thế. Đừng vòng qua.
+
+## Quy mô theo chặng — hiệu chỉnh ngưỡng sanity check
+
+`MIN_RAW` / `MIN_HANG` của `tvl_playwright.js`, và kỳ vọng số chuyến của mọi nguồn, **đổi theo chặng cả một bậc độ lớn**. Áp số của trục chính lên chặng mỏng là tự tạo cảnh báo giả.
+
+| Chặng | `searchResults` thô | Chuyến/ngày sau lọc khung giờ | Hãng khai thác | Đo ngày |
+|---|---|---|---|---|
+| SGN–DAD | ~110–130 | 8–12 | 4–5 (VN, VJ, QH, VU, 9G) | 09/08/2026 |
+| SGN–DLI | *(chưa đo, Traveloka 403)* | đi 3–5, về 1–3 | **2** (VN, VJ) | 17/08 và 01/11/2026 |
+
+Ở SGN⇄DLI, cả ngày chỉ có 5–6 chuyến mỗi chiều (SGN–DLI: 06:10 VN, 06:30 VJ, 09:55 VN, 16:20 VJ, 17:25 VN; DLI–SGN: 07:40, 07:55, 11:35, 17:45 VJ, 18:55 VN, 19:45 VN). Run 17/08/2026 còn có ngày chiều về **0 chuyến** trong khung giờ, và đó là số thật.
+
+⇒ Chặng chưa có trong bảng: để `MIN_RAW = null`, `MIN_HANG = null` và dựa vào check **đối chiếu giữa các chặng**, vốn không cần biết trước quy mô. Chạy §5 verify hãng khai thác trước thì biết `MIN_HANG` đúng là bao nhiêu. Đo được thì thêm một dòng vào bảng này.
 
 ## Web hãng (chỉ khi được yêu cầu)
 

@@ -29,12 +29,26 @@ Cách viết đúng: gán `raw = resp.json()` (giữ *promise*, chưa await) tro
 
 ## Sanity check BẮT BUỘC sau mỗi chặng
 
-Không có check này thì bẫy trên tái diễn mà không ai biết:
+Không có check này thì bẫy trên tái diễn mà không ai biết. Có hai check, và check thứ hai
+mới là cái dùng được ở mọi chặng:
 
-1. `searchResults.length` phải trong khoảng **~110–130** (chặng SGN–DAD). Thấp hơn nhiều
-   → body bị cắt, chạy lại chặng đó.
-2. Số hãng riêng biệt sau khi lọc phải **≥ 3**. Chỉ 1–2 hãng là dấu hiệu thiếu.
-3. Nếu lệch → ghi `Log` và quét lại, **không** dùng số đó.
+**1. Ngưỡng tuyệt đối, phải hiệu chỉnh theo chặng.** `MIN_RAW` / `MIN_HANG` trong khối tham
+số của `tvl_playwright.js`. Bảng đã đo ở mục "Quy mô theo chặng" của `site-quirks.md`. Trước
+v1.5.2 hai ngưỡng này hard-code 110 và 3, hiệu chỉnh cho SGN–DAD; áp lên chặng mỏng thì
+**mọi chặng đều kêu**, và cái giá thật không phải là một cảnh báo thừa mà là người chạy học
+cách bỏ qua cảnh báo. Chưa biết chặng cỡ nào thì để `null` cho tắt, đừng đoán một con số.
+
+**2. Đối chiếu giữa các chặng — không cần biết trước quy mô.** Body bị cắt làm *một vài*
+chặng thấp hẳn so với các chặng còn lại của cùng chặng bay, trong khi chặng mỏng thật thì
+mọi ngày thấp đều nhau. Script tự cảnh báo chặng nào dưới 50% của chặng cao nhất. Đo
+09/08/2026: lỗi cho 120/51/77/57/**18** (min/max = 0,15), đúng cho 120/126/123/125/126
+(0,95). Một chặng đơn lẻ thì không đối chiếu được, script nói thẳng là không kết luận.
+
+**3. Lệch → ghi `Log` và quét lại riêng chặng đó, không dùng số đó.** Quét lại vẫn ra số cũ
+thì đó là số thật.
+
+Ca đã gặp thật (01/11/2026, SGN⇄DLI): chặng chỉ có 2 hãng và 5–6 chuyến/ngày. Cả hai ngưỡng
+cũ đều kêu dù dữ liệu đủ. Xem `tests/tvl_sanity_offline.js` cho bốn ca này ở dạng test.
 
 ## `browser_run_code_unsafe` — 3 bẫy cú pháp / vòng đời (đo 09/08/2026)
 
@@ -82,11 +96,26 @@ bắt buộc phải `page.goto()` một lần.
 Đo thực tế: **5 chặng liên tiếp không delay** + ~13 lần navigate trong một phiên → không
 captcha, không chặn, không suy giảm. Mỗi chặng 1,7–3,6 giây.
 
-Traveloka **có** cơ chế chống bot (`sentinel.token` trong request body) nhưng vẫn cấp token
-bình thường cho Chromium của Playwright. `navigator.webdriver` không kích hoạt chặn nào.
+**ĐÃ ĐỔI — 01/11/2026 Traveloka trả HTTP 403 cho Chromium của Playwright.** Thử hai lần
+chặng SGN–DLI, `goto` ra 403, body rỗng, không bắt được payload nào. **Không phải IP**: API
+VNA của §3 gọi từ cùng máy, cùng phiên, vẫn trả 200. Nên nó là chặn theo fingerprint của
+Chromium-Playwright. Mục này trước đó ghi "vẫn cấp token bình thường cho Chromium của
+Playwright" (đo 09/08/2026) — điều đó không còn đúng.
 
-Chưa đo ở quy mô > 5 chặng liên tục. Nếu quét 16 chặng, chèn delay 2–3 giây cho an toàn và
-theo dõi sanity check — bị chặn sẽ lộ ra ở đó trước tiên.
+Gặp 403: **đừng vòng qua** (không đổi user-agent, không giả fingerprint, không proxy) theo
+SKILL.md §1.5. Ba đường còn lại, theo thứ tự đệ khuyên:
+
+1. **Chạy một nguồn Google Flights.** Hỏi người dùng trước, và nói rõ hệ quả: mất đối chiếu
+   chéo, mất cột `Giá thấp nhất (mọi nguồn)`, không áp được ngưỡng điều tra 25%. Ghi vào
+   `Log`. Mất mát nhỏ hơn hẳn nếu Google Flights đã phủ đủ hãng khai thác chặng đó — chạy
+   §5 trước thì biết. Ở SGN⇄DLI, GF phủ 2/2 hãng nên gần như không mất gì.
+2. **Traveloka qua Claude in Chrome** (`scripts/tvl_extract.js`): Chrome thật, fingerprint
+   thật, có thể không bị 403 — **chưa đo**. Đổi lại ~7 thao tác mỗi chặng.
+3. **Dừng, để hôm khác.**
+
+Trước 403, đo được: 5 chặng liên tiếp không delay + ~13 lần navigate trong một phiên → không
+captcha, không chặn, không suy giảm. Mỗi chặng 1,7–3,6 giây. Nếu Traveloka mở lại thì vẫn
+chèn delay 2–3 giây khi quét nhiều chặng và theo dõi sanity check.
 
 ## Chi phí đo được
 

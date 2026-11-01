@@ -9,16 +9,24 @@
  * ĐỌC references/playwright-path.md TRƯỚC: có một bẫy làm mất dữ liệu im lặng.
  */
 async (page) => {
-  // ---- sửa 3 dòng này ----
+  // ---- sửa khối này ----
   const ROUTE = 'SGN.DAD';
   const LEGS  = ['25-08-2026', '26-08-2026'];     // DD-MM-YYYY
   const WIN   = [345, 630];                        // phút từ nửa đêm; [0,1440] = không lọc
   const DELAY = 2000;                               // ms giữa các chặng
+  // Ngưỡng sanity check, PHẢI hiệu chỉnh theo chặng: trục chính khác chặng mỏng cả một
+  // bậc độ lớn. Đặt sai thì mọi chặng đều kêu và người chạy học cách bỏ qua cảnh báo.
+  // Bảng hiệu chỉnh đã đo nằm ở references/site-quirks.md mục "Quy mô theo chặng".
+  // Chưa biết chặng này cỡ nào thì để null: check tuyệt đối tắt, chỉ còn check đối chiếu
+  // giữa các chặng ở dưới, vốn không cần biết trước quy mô.
+  const MIN_RAW  = 110;                             // null = tắt
+  const MIN_HANG = 3;                               // null = tắt
   // ------------------------
 
   const pad  = t => String(t.hour).padStart(2, '0') + ':' + String(t.minute).padStart(2, '0');
   const mins = s => +s.slice(0, 2) * 60 + +s.slice(3);
   const out  = [];
+  const raws = [];   // raw/chặng, dùng cho bước đối chiếu giữa các chặng ở cuối
 
   for (const d of LEGS) {
     let raw = null;
@@ -63,14 +71,37 @@ async (page) => {
 
     // SANITY CHECK: thieu cai nay thi loi mat du lieu tai dien ma khong ai biet
     const warn = [];
-    if (res.length < 110) warn.push(`raw=${res.length} THAP BAT THUONG: nghi body bi cat, QUET LAI`);
-    if (hangs.length < 3) warn.push(`chi ${hangs.length} hang: nghi thieu du lieu`);
+    if (MIN_RAW !== null && res.length < MIN_RAW)
+      warn.push(`raw=${res.length} < nguong ${MIN_RAW}: nghi body bi cat, QUET LAI`
+                + ` (nguong sai cho chang nay? xem site-quirks.md)`);
+    if (MIN_HANG !== null && hangs.length < MIN_HANG)
+      warn.push(`chi ${hangs.length} hang (nguong ${MIN_HANG}): nghi thieu du lieu,`
+                + ` HOAC chang nay that su chi co bay nhieu hang`);
 
+    raws.push({ d, n: res.length });
     out.push(`=== ${d} :: luc ${luc} :: raw=${res.length} -> ${rows.length} chuyen | hang: ${hangs.join('/')}`
              + (warn.length ? '\n!!! ' + warn.join(' ; ') : ''));
     out.push(rows.map(r => [r.dep, r.arr, r.f, r.a, r.p].join(' ; ')).join('\n'));
 
     if (DELAY) await page.waitForTimeout(DELAY);
+  }
+
+  // ĐỐI CHIẾU GIỮA CÁC CHẶNG — không cần biết trước quy mô chặng, nên bắt được lỗi body
+  // bị cắt ở cả chặng mỏng, nơi ngưỡng tuyệt đối vô dụng. Body bị cắt làm MỘT VÀI chặng
+  // thấp hẳn so với các chặng còn lại của cùng chặng bay; chặng mỏng thật thì mọi ngày
+  // đều thấp đều nhau. Đo 09/08/2026, lỗi này cho 120/51/77/57/18 trong khi đúng là
+  // 120/126/123/125/126 — tỉ lệ min/max 0,15 so với 0,95.
+  if (raws.length >= 2) {
+    const ns = raws.map(r => r.n), max = Math.max(...ns);
+    const lech = max > 0 ? raws.filter(r => r.n < max * 0.5) : [];
+    out.push('', `--- doi chieu giua ${raws.length} chang: raw ${ns.join('/')} ---`);
+    if (lech.length)
+      out.push(`!!! ${lech.map(r => r.d + '=' + r.n).join(', ')} duoi 50% cua max (${max}):`
+             + ` nghi body bi cat o dung nhung chang nay, QUET LAI rieng chung.`
+             + ` Neu quet lai van ra so cu thi la that.`);
+    else
+      out.push(`OK: chang thap nhat (${Math.min(...ns)}) >= 50% cua max (${max}),`
+             + ` khong co dau hieu body bi cat`);
   }
   return out.join('\n');
 }

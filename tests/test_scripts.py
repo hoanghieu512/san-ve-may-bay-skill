@@ -459,6 +459,16 @@ class TestGfBookingOffline(unittest.TestCase):
         self.assertEqual(p.stdout.count('PASS'), 6, p.stdout)
 
 
+class TestTvlSanityOffline(unittest.TestCase):
+    @unittest.skipUnless(node_env(), 'node + playwright not available')
+    def test_cross_leg_check(self):
+        p = subprocess.run(['node', os.path.join(ROOT, 'tests', 'tvl_sanity_offline.js'),
+                            os.path.join(SCRIPTS, 'tvl_playwright.js')],
+                           capture_output=True, text=True, env=node_env(), timeout=180)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(p.stdout.count('PASS'), 6, p.stdout)
+
+
 class TestVerifyTies(unittest.TestCase):
     @unittest.skipUnless(shutil.which('soffice'), 'LibreOffice not installed')
     def test_two_flights_same_price(self):

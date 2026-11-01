@@ -2,6 +2,8 @@
 // captcha -> con_lai, stale DOM after a failed goto, recovery after a failed goto, budget cap.
 //   node tests/gf_booking_offline.js skill/ve-may-bay-noi-dia/scripts/gf_booking.js
 // Run by tests/test_scripts.py when node + the playwright package are available.
+// PW_CHROMIUM=/path/to/chromium reuses a browser that is already on disk, for when the
+// installed playwright package and the cached browser build do not match.
 const fs = require('fs');
 const { chromium } = require('playwright');
 const SRC = fs.readFileSync(process.argv[2], 'utf8');
@@ -18,7 +20,8 @@ async function run(page, flights, budget) {
   const t0 = Date.now(); const out = JSON.parse(await eval(s)(page)); out.ms = Date.now() - t0; return out;
 }
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(
+    process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
   const page = await browser.newPage();
   let failed = 0;
   const ok = (c, m) => { if (!c) failed++; console.log((c ? 'PASS ' : 'FAIL ') + m); };
