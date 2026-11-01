@@ -2,14 +2,14 @@
 name: ve-may-bay-noi-dia
 description: Thu thập và đối chiếu giá vé máy bay nội địa Việt Nam từ nhiều nguồn, rồi xuất file Excel so sánh. Use when người dùng muốn so sánh giá vé, tìm vé rẻ, quét giá nhiều ngày bay, dò giá khứ hồi, hoặc lập bảng so sánh chuyến bay — ví dụ "so giá vé SGN đi Đà Nẵng tháng 8", "tìm vé rẻ nhất HAN-SGN mấy cuối tuần tới", "quét giá vé máy bay giúp huynh", "compare flight prices Vietnam domestic", "check vé Tết". KHÔNG dùng cho chặng quốc tế (logic nối chuyến và hạng vé khác hẳn).
 metadata:
-  version: "1.5.2"
+  version: "1.6.0"
   updated: "2026-11-01"
   source: "https://github.com/hoanghieu512/san-ve-may-bay-skill"
 ---
 
 # Thu thập & so sánh giá vé nội địa VN
 
-**v1.5.2** · cập nhật 01/11/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
+**v1.6.0** · cập nhật 01/11/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
 
 Quét giá thật từ Google Flights / Traveloka, đối chiếu chéo, xác nhận nơi mua của các chuyến đề xuất, rồi xuất Excel 4 sheet. Đích cuối: người dùng mở file là biết **mua chuyến nào, ở người bán nào, giá bao nhiêu, bấm link nào**.
 
@@ -89,7 +89,7 @@ Nếu Playwright MCP có sẵn, Traveloka rẻ hơn ~15–20 lần: đọc `refe
 
 Bước xác nhận nơi mua chỉ chạy cho **danh sách đề xuất**: chuyến của Block C + 3 chuyến rẻ nhất mỗi chiều, chuyến trùng giữa các cặp chỉ tính một lần. Thường 4–8 chuyến mỗi cặp ngày. Cộng phần này vào ước lượng.
 
-**Đếm cả số lượt tải trang Google Flights**, không chỉ số thao tác: mỗi chặng quét = 1 lượt, mỗi chuyến xác nhận = 1 lượt. Đo 23/10/2026 từ IP cloud: khoảng 30 lượt trong khoảng 40 phút thì bị captcha (xem `site-quirks.md`). Phương án vượt mức đó thì nói rõ rủi ro khi đưa lựa chọn cho người dùng.
+**Đếm cả số lượt tải trang Google Flights**, không chỉ số thao tác: mỗi chặng quét = 1 lượt, mỗi chuyến xác nhận = 1 lượt. Mức đã đo rất khác nhau theo nơi chạy: **IP cloud ~30 lượt/40 phút là bị captcha; IP dân dụng ở nhà chạy 91 lượt/55 phút không bị gì** (01/11/2026). Dùng mốc của đúng môi trường đang chạy: lấy mốc cloud cho máy người dùng thì cắt nhỏ phương án vô cớ, mà một lượt chạy chia làm nhiều phiên là giá hai nửa đọc ở hai thời điểm khác nhau. Xem `site-quirks.md`. Phương án vượt mốc tương ứng thì nói rõ rủi ro khi đưa lựa chọn cho người dùng.
 
 Tính tổng, rồi **dùng AskUserQuestion đưa ra 2-3 phương án phạm vi kèm ưu/nhược** trước khi tốn thao tác nào. Ví dụ 4 cặp × 2 nguồn ≈ 36 thao tác (chạy tốt); 8 cặp × 2 nguồn ≈ 72 (vẫn được); thêm web hãng cho 4 hãng ≈ 480 (không khả thi).
 
@@ -140,8 +140,9 @@ Ví dụ đã gặp (09/08/2026): Sun PhuQuoc Airways lệch 78–123% ở mọi
 Giá ở danh sách Google Flights **không phải chỗ mua**: Google không bán vé, và con số ở danh sách chưa chắc là giá mua thấp nhất. Đo 23/10/2026, VJ 632 SGN-DAD ngày 14/11: danh sách ghi 742.061 ₫ (giá Vietjet, đã gồm 100.000 ₫ phí tiện lợi), còn trang đặt vé của chính chuyến đó có đại lý Jettzy bán 679.301 ₫. Người dùng cần biết mua ở đâu, giá bao nhiêu, bấm link nào, nên bước này không được bỏ.
 
 1. `python3 scripts/merge_sources.py job.json checkpoint.json --de-xuat` in danh sách `FLIGHTS`: mỗi chuyến đề xuất kèm link trang đặt vé dựng sẵn.
-2. Dán vào khối tham số của `scripts/gf_booking.js`, chạy qua `browser_run_code_unsafe`. Lưu **nguyên văn** chuỗi trả về ra `gf_booking_raw.json` trong thư mục run. `con_lai` khác rỗng (hết ngân sách thời gian của một call) thì gọi lại với phần còn lại, lưu `gf_booking_raw_2.json`.
-3. Khai báo `"xac_nhan": ["gf_booking_raw.json", ...]` trong `job.json`, chạy lại merge.
+2. Dán vào khối tham số của `scripts/gf_booking.js`, chạy qua `browser_run_code_unsafe`. Lưu **nguyên văn** chuỗi trả về ra file trong thư mục run. `con_lai` khác rỗng (hết ngân sách thời gian của một call) thì gọi lại với phần còn lại, lưu thành file tiếp theo.
+3. Script mặc định chạy `GON = true`: trả text gọn (bỏ `url`, giảm ~58% độ dài), lưu ra `gf_booking_gon.txt` rồi dựng ra file raw bằng `python3 scripts/gf_booking_gon.py gf_booking_gon.txt checkpoint.json gf_booking_raw.json`. **Giữ cả hai file.** Đặt `GON = false` thì chuỗi trả về đã là raw, lưu thẳng ra `gf_booking_raw.json`, bỏ bước này. Đừng chép tay 300 dòng người bán: Playwright không ghi được file nên kết quả buộc đi qua context, và đó đúng là chỗ đã sai ngày 01/11/2026.
+4. Khai báo `"xac_nhan": ["gf_booking_raw.json", ...]` trong `job.json`, chạy lại merge.
 
 Đọc `references/gf-booking.md` trước: cấu trúc link, cách đọc người bán, các trạng thái lỗi.
 
@@ -171,7 +172,7 @@ Cảnh báo LCC cộng thuế phí ở bước sau **chỉ áp dụng cho web h�
 
 ## 8. Bước 3 — Xuất Excel
 
-Chuỗi đầy đủ: **extract → `merge_sources.py --de-xuat` → `gf_booking.js` → `merge_sources.py` (có `xac_nhan`) → `build_workbook.py` → recalc → `verify_workbook.py`.**
+Chuỗi đầy đủ: **extract → `merge_sources.py --de-xuat` → `gf_booking.js` → `gf_booking_gon.py` (chỉ khi `GON = true`) → `merge_sources.py` (có `xac_nhan`) → `build_workbook.py` → recalc → `verify_workbook.py`.**
 
 `scripts/build_workbook.py <checkpoint.json> <output.xlsx>` → 4 sheet, theo thứ tự:
 
@@ -227,7 +228,7 @@ Nếu đã chạy §3: đối chiếu giá VNA thấp nhất mỗi ngày trong w
 
 Mỗi lần chạy là một thư mục `runs/<YYYYMMDD>/` **trong thư mục dự án đang được mount**, không phải scratchpad của phiên — scratchpad mất khi phiên đóng.
 
-Thư mục đó bắt buộc có đủ bốn thứ: `job.json`, **toàn bộ file raw của từng nguồn** (kể cả `gf_booking_raw*.json` của bước xác nhận nơi mua), checkpoint, và workbook `.xlsx`. Raw + `job.json` là thứ duy nhất cho phép dựng lại checkpoint và workbook mà không phải quét lại. Thiếu chúng thì run đó không tái lập được, và cũng không đối chiếu được với run sau để biết giá đã đổi bao nhiêu. Chuyện này đã xảy ra: `runs/20260805/` giờ chỉ còn checkpoint và xlsx, không dựng lại được gì từ nó.
+Thư mục đó bắt buộc có đủ bốn thứ: `job.json`, **toàn bộ file raw của từng nguồn** (kể cả `gf_booking_raw*.json` của bước xác nhận nơi mua, và `gf_booking_gon*.txt` nếu chạy chế độ gọn), checkpoint, và workbook `.xlsx`. Raw + `job.json` là thứ duy nhất cho phép dựng lại checkpoint và workbook mà không phải quét lại. Thiếu chúng thì run đó không tái lập được, và cũng không đối chiếu được với run sau để biết giá đã đổi bao nhiêu. Chuyện này đã xảy ra: `runs/20260805/` giờ chỉ còn checkpoint và xlsx, không dựng lại được gì từ nó.
 
 Chạy hai lần trong cùng một ngày thì workbook thêm hậu tố `HHMM`, **không ghi đè file cũ**. Mục đích chính của việc lưu run là so sánh biến động giữa các lần quét — ghi đè là xoá mất đúng thứ đó.
 

@@ -25,8 +25,8 @@ Cache skill mà Cowork nạp (nằm dưới `/var/folders/.../claude-hostloop-pl
 
 ### Cài đè phải đủ 17 file, không chỉ SKILL.md
 
-Gói `.skill` là zip chứa **đủ 17 file** (SKILL.md + 6 `references/` + 10 `scripts/`, tính từ v1.5.0;
-trước đó là 13). Nhưng agent
+Gói `.skill` là zip chứa **đủ 18 file** (SKILL.md + 6 `references/` + 11 `scripts/`, tính từ
+v1.6.0; v1.5.0-v1.5.2 là 17, trước đó 13). Nhưng agent
 bên Cowork có đường tắt `save_skill` chỉ ghi lại SKILL.md và giữ nguyên `references/` +
 `scripts/` của bản đang cài. Đã xảy ra ở v1.4.0: gói đủ file, nhưng chỉ SKILL.md được ghi.
 
@@ -35,7 +35,7 @@ mới chạy với script cũ, sai âm thầm, không có lỗi nào để lần
 
 Vì vậy khi drop gói: nói rõ **"cài đè toàn bộ gói, cả references và scripts"**, rồi yêu cầu
 liệt kê lại từng file đã ghi. Đường tắt chỉ-SKILL.md chấp nhận được duy nhất khi đã diff và
-biết chắc 16 file kia không đổi.
+biết chắc những file kia không đổi.
 
 Cách tự kiểm nhanh xem bản mới có đụng file khác ngoài SKILL.md:
 
@@ -52,7 +52,7 @@ SKILL.md có dòng version + ngày cập nhật ở hai chỗ: `metadata.version
 
 Đổi nội dung skill thì: bump version → cập nhật ngày → tạo git tag khớp (`git tag vX.Y.Z && git push --tags`). Tag là bắt buộc vì chính SKILL.md dặn người dùng đối chiếu version đang nạp với `git tag` mới nhất ở repo nguồn để biết bản của họ có cũ không.
 
-Tag mới nhất hiện tại: `v1.5.2`.
+Tag mới nhất hiện tại: `v1.6.0`.
 
 ## `runs/` không được commit
 

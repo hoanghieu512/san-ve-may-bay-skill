@@ -84,6 +84,50 @@ Dán `FLIGHTS` do `merge_sources.py job.json checkpoint.json --de-xuat` in ra, c
 
 Lưu **nguyên văn** ra `gf_booking_raw.json` trong thư mục run, rồi khai báo ở `job.json` khoá `xac_nhan`. Merge chấp nhận cả object lẫn chuỗi JSON nguyên văn.
 
+## Chế độ gọn (`GON = true`, mặc định): dùng khi nhiều chuyến
+
+Playwright **không ghi được file** (không có `fs`, `filename` vô dụng khi đổi phiên, xem `playwright-path.md`), nên kết quả bắt buộc đi qua context rồi mình chép ra file. Với 67 chuyến thì JSON nguyên văn là 75 KB, mà chép tay từng chuyến x từng người bán thì sai sót là chuyện chắc chắn xảy ra: ngày 01/11/2026 đã phải sửa script giữa lúc chạy để lấy dạng gọn. Giờ dạng gọn nằm sẵn trong script, đã test.
+
+`GON = true` trả về text nhiều dòng, **bỏ đúng một trường: `url`**, vì `gf_booking_gon.py` dựng lại được từ `link_chuyen` trong checkpoint (chính là link merge đã dựng để in ra `FLIGHTS`, nên khớp từng byte). Mọi thứ khác đi qua nguyên văn, kể cả `chuyen` và ghi chú phí: đó là bằng chứng link mở đúng chuyến và giá gồm những gì, đừng cắt để tiết kiệm token. Đo trên run 67 chuyến ngày 01/11/2026: **75.404 → 32.003 byte, giảm 58%**.
+
+```
+# GON<TAB>1<TAB>2 chuyen
+F<TAB>2026-11-14<TAB>SGN<TAB>DAD<TAB>VJ 632<TAB>20:10<TAB>14/11/2026 11:22 (giờ VN)<TAB>OK<TAB><TAB>Thứ 7, 14 thg 11 | 20:10 | – | 21:30 | Vietjet
+H<TAB>Miễn phí 1 kiện hành lý xách tay ;; Có tính phí kiện hành lý ký gửi đầu tiên
+B<TAB>Vietjet<TAB>H<TAB>742061<TAB>Bao gồm phí tiện lợi 100.000 ₫
+B<TAB>Jettzy<TAB>D<TAB>679301<TAB>
+F<TAB>2026-11-14<TAB>SGN<TAB>DAD<TAB>VN 2<TAB>08:00<TAB>14/11/2026 11:22 (giờ VN)<TAB>Không khả dụng<TAB>Google Flights báo hành trình không còn (hết chỗ, hết bán, hoặc sai số hiệu)<TAB>
+# CON_LAI<TAB>(het)
+# DUNG<TAB>(khong)
+```
+
+Phân cách là **tab**, mọi tab/xuống dòng trong nội dung bị đổi thành khoảng trắng trước khi ghi.
+
+| Dòng | Cột |
+|---|---|
+| `F` | ngày (ISO), từ, đến, số hiệu, giờ đi, thời điểm đọc, trạng thái, lý do, khối chuyến đã chọn |
+| `H` | hành lý, nhiều mục nối bằng ` ;; ` (không có dòng này = không đọc được mục hành lý nào) |
+| `B` | người bán, `H` (hãng) hay `D` (đại lý), giá (rỗng = không đọc được giá), ghi chú phí |
+| `# CON_LAI` | **chỉ số** trong `FLIGHTS` vừa dán, hoặc `(het)`. Không trả url: danh sách đang nằm ngay trong call, gọi lại với `FLIGHTS.slice(<số đầu>)` |
+| `# DUNG` | lý do bị chặn, hoặc `(khong)` |
+
+Mỗi `H` và `B` thuộc về dòng `F` ngay trên nó.
+
+Các bước:
+
+```bash
+# 1. lưu nguyên văn chuỗi script trả về ra gf_booking_gon.txt (ĐỪNG đặt tên .json)
+# 2. dựng ra file raw đúng schema
+python3 scripts/gf_booking_gon.py gf_booking_gon.txt checkpoint.json gf_booking_raw.json
+# 3. khai báo gf_booking_raw.json ở job.json "xac_nhan", chạy lại merge
+```
+
+**Giữ cả hai file trong thư mục run**: `gf_booking_gon.txt` là thứ script thật trả về, `gf_booking_raw.json` là thứ đã qua một bước xử lý. §8 đòi raw để dựng lại được workbook mà không quét lại.
+
+Dòng `F` nào không tìm được trong checkpoint thì `gf_booking_gon.py` **thoát mã 1 và không ghi file**, kèm danh sách chuyến thiếu. Sai số hiệu hay sai ngày mà bỏ qua im lặng thì chuyến đó mất khỏi sheet Mua vé và không ai biết. Khai báo thẳng file `# GON` vào `xac_nhan` cũng bị merge chặn với thông báo chỉ đúng lệnh cần chạy.
+
+Cần JSON nguyên văn (ít chuyến, hoặc muốn bỏ hẳn bước chuyển): đặt `GON = false`, lưu ra `gf_booking_raw.json`, khai báo luôn. Hai đường cho ra **cùng một file**: `tests/gf_booking_offline.js` + `tests/test_scripts.py` chạy cùng một bộ chuyến hai lần rồi so từng khoá. Đã đối chiếu thêm trên dữ liệu thật của run 01/11/2026 (4 file, 67 chuyến, 335 dòng người bán): dựng dạng gọn từ raw rồi chuyển về, khớp từng khoá cả 4 file.
+
 | `trang_thai` | Khi nào | Merge làm gì |
 |---|---|---|
 | `OK` | Đọc được người bán, giờ đi khớp | Gắn vào chuyến, lên sheet Mua vé |
@@ -96,7 +140,7 @@ Lưu **nguyên văn** ra `gf_booking_raw.json` trong thư mục run, rồi khai 
 
 ## Thời gian
 
-Mỗi trang nạp 1–2,5 giây (đo 23/10/2026). `BUDGET_MS = 25000` dừng trước trần thời gian của một MCP request (xem `playwright-path.md`: một call quá dài bị reset về `about:blank`), nên mỗi call làm được khoảng 8 chuyến. Ngân sách tính cho **cả chuyến**, không chỉ lúc bắt đầu: mỗi bước chờ bị cắt theo phần ngân sách còn lại, chuyến bị cắt ngang không ghi `Lỗi` mà chuyển vào `con_lai`. Phần chưa làm trả về trong `con_lai`: gọi lại với `FLIGHTS = con_lai`, lưu file kết quả thứ hai, khai báo cả hai file trong `xac_nhan` theo thứ tự chạy. Chuyến có nhiều kết quả thì merge lấy kết quả `OK` mới nhất, nên một lượt chạy lại bị lỗi không xoá mất kết quả tốt đã có.
+Mỗi trang nạp 1–2,5 giây (đo 23/10/2026). `BUDGET_MS = 25000` dừng trước trần thời gian của một MCP request (xem `playwright-path.md`: một call quá dài bị reset về `about:blank`), nên mỗi call làm được khoảng 8 chuyến. Ngân sách tính cho **cả chuyến**, không chỉ lúc bắt đầu: mỗi bước chờ bị cắt theo phần ngân sách còn lại, chuyến bị cắt ngang không ghi `Lỗi` mà chuyển vào `con_lai`. Phần chưa làm trả về trong `con_lai`: gọi lại với phần đó (`GON = false` trả về nguyên các object, dán thẳng làm `FLIGHTS`; `GON = true` trả về chỉ số, dùng `FLIGHTS.slice(<số đầu>)`), lưu file kết quả thứ hai, khai báo cả hai file trong `xac_nhan` theo thứ tự chạy. Chuyến có nhiều kết quả thì merge lấy kết quả `OK` mới nhất, nên một lượt chạy lại bị lỗi không xoá mất kết quả tốt đã có.
 
 ## Không có Playwright
 

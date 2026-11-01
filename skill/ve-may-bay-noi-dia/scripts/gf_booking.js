@@ -4,11 +4,18 @@
  *       `merge_sources.py job.json checkpoint.json --de-xuat` in ra vào khối tham số.
  * MỤC ĐÍCH: bước xác nhận nơi mua (SKILL.md §6). Chỉ ĐỌC trang: không bấm "Tiếp tục",
  *           không đăng nhập. Đọc references/gf-booking.md trước.
- * TRẢ VỀ: chuỗi JSON { ket_qua: [...], con_lai: [...], dung: "..." }.
- *         Lưu NGUYÊN VĂN ra file (vd gf_booking_raw.json) rồi khai báo trong job.json
- *         ở khoá "xac_nhan". `con_lai` khác rỗng = hết ngân sách thời gian (gọi lại
- *         với FLIGHTS = con_lai, lưu file thứ hai, khai báo cả hai), hoặc bị chặn khi
- *         `dung` khác rỗng (dừng, báo người dùng; chuyến dính chặn cũng nằm trong con_lai).
+ * TRẢ VỀ: tuỳ `GON`.
+ *   GON = true  (mặc định): text nhiều dòng, bỏ `url` của từng chuyến. Lưu ra
+ *         `gf_booking_gon.txt` rồi chạy `scripts/gf_booking_gon.py` để dựng ra file raw
+ *         đúng schema. Dùng cái này khi phải xác nhận nhiều chuyến: `url` là tfs protobuf
+ *         base64url ~250 ký tự mỗi chuyến, mà `gf_booking_gon.py` dựng lại được từ
+ *         `link_chuyen` trong checkpoint nên không cần đi qua context.
+ *   GON = false: chuỗi JSON { ket_qua: [...], con_lai: [...], dung: "..." }: lưu NGUYÊN VĂN
+ *         ra file (vd gf_booking_raw.json), không cần bước chuyển.
+ * Cả hai: khai báo file raw trong job.json ở khoá "xac_nhan". `con_lai` khác rỗng = hết
+ *         ngân sách thời gian (gọi lại với phần còn lại, lưu file thứ hai, khai báo cả
+ *         hai), hoặc bị chặn khi `dung` khác rỗng (dừng, báo người dùng; chuyến dính chặn
+ *         cũng nằm trong con_lai).
  *
  * Link trang đặt vé (tham số tfs) do merge_sources.py dựng từ ngày + chặng + số hiệu.
  * Đã kiểm chứng 23/10/2026: mở ở context trắng, không cookie, ra đúng chuyến 3/3 hãng.
@@ -21,6 +28,7 @@ async (page) => {
   const BUDGET_MS = 25000;   // dừng sớm, tránh chạm trần thời gian của một MCP request
   const WAIT_MS   = 15000;   // tối đa chờ một trang đặt vé
   const MIN_MS    = 4000;    // ngân sách còn ít hơn mức này thì để chuyến sang con_lai
+  const GON       = true;    // true: text gọn + gf_booking_gon.py. false: JSON nguyên văn
   // -----------------------------
 
   const t0 = Date.now();
@@ -132,5 +140,25 @@ async (page) => {
     ket_qua.push(r);
   }
 
-  return JSON.stringify({ ket_qua, con_lai, dung }, null, 0);
+  if (!GON) return JSON.stringify({ ket_qua, con_lai, dung }, null, 0);
+
+  // Chế độ gọn. Bỏ DUY NHẤT `url`, vì gf_booking_gon.py dựng lại được từ `link_chuyen`
+  // trong checkpoint. Giữ `chuyen` và mọi ghi chú: đó là bằng chứng link đã mở đúng
+  // chuyến và giá gồm phí gì; cắt bằng chứng để tiết kiệm token là sai chỗ.
+  const g = v => String(v == null ? '' : v).replace(/[\t\n\r]+/g, ' ').trim();
+  const L = ['# GON\t1\t' + ket_qua.length + ' chuyen'];
+  for (const r of ket_qua) {
+    L.push(['F', r.ngay, r.tu, r.den, r.sh, r.dep, r.luc, r.trang_thai, r.ly_do, r.chuyen]
+           .map(g).join('\t'));
+    if (r.hanh_ly.length) L.push('H\t' + r.hanh_ly.map(g).join(' ;; '));
+    for (const b of r.ban)
+      L.push(['B', b.nguoi_ban, b.loai === 'Hãng hàng không' ? 'H' : 'D',
+              b.gia == null ? '' : b.gia, b.ghi_chu].map(g).join('\t'));
+  }
+  // con_lai trả về theo CHỈ SỐ trong FLIGHTS vừa dán, không trả url: danh sách đang nằm
+  // ngay trong call, nên gọi lại với `FLIGHTS.slice(<số đầu>)` là đủ.
+  L.push('# CON_LAI\t' + (con_lai.length
+    ? con_lai.map(f => FLIGHTS.indexOf(f)).join(',') : '(het)'));
+  L.push('# DUNG\t' + (dung ? g(dung) : '(khong)'));
+  return L.join('\n');
 }

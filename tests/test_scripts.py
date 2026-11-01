@@ -452,11 +452,74 @@ def node_env():
 class TestGfBookingOffline(unittest.TestCase):
     @unittest.skipUnless(node_env(), 'node + playwright not available')
     def test_offline_scenarios(self):
-        p = subprocess.run(['node', os.path.join(ROOT, 'tests', 'gf_booking_offline.js'),
-                            os.path.join(SCRIPTS, 'gf_booking.js')],
-                           capture_output=True, text=True, env=node_env(), timeout=180)
-        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertEqual(p.stdout.count('PASS'), 6, p.stdout)
+        with tempfile.TemporaryDirectory() as d:
+            p = subprocess.run(['node', os.path.join(ROOT, 'tests', 'gf_booking_offline.js'),
+                                os.path.join(SCRIPTS, 'gf_booking.js'), d],
+                               capture_output=True, text=True, env=node_env(), timeout=180)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            self.assertEqual(p.stdout.count('PASS'), 12, p.stdout)
+            self.roundtrip(d)
+
+    def roundtrip(self, d):
+        """Chế độ gọn + gf_booking_gon.py phải cho ra ĐÚNG file mà GON = false cho ra.
+
+        Đây là điều duy nhất đáng kiểm ở dạng gọn: nó tồn tại chỉ để tiết kiệm context,
+        nên mất một trường nào là mất im lặng."""
+        with open(os.path.join(d, 'flights.json'), encoding='utf-8') as fh:
+            flights = json.load(fh)
+        cp = dict(meta={}, caps=[dict(
+            ten='Cặp 1', ngay_di='14/11/2026', ngay_ve='15/11/2026',
+            di=dict(chuyen=[dict(sh=f['sh'], dep=f['dep'], link_chuyen=f['url'])
+                            for f in flights]),
+            ve=dict(chuyen=[]))], log=[])
+        cp_path = os.path.join(d, 'checkpoint.json')
+        with open(cp_path, 'w', encoding='utf-8') as fh:
+            json.dump(cp, fh, ensure_ascii=False)
+        out = os.path.join(d, 'rebuilt.json')
+        r = subprocess.run([sys.executable, os.path.join(SCRIPTS, 'gf_booking_gon.py'),
+                            os.path.join(d, 'gon.txt'), cp_path, out],
+                           capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        with open(out, encoding='utf-8') as fh:
+            got = json.load(fh)
+        with open(os.path.join(d, 'full.json'), encoding='utf-8') as fh:
+            want = json.load(fh)
+        self.assertEqual(got, want, 'gọn + gon.py != JSON nguyên văn')
+        self.assertEqual(len(got['ket_qua']), 2, got)
+        self.assertEqual(len(got['ket_qua'][0]['ban']), 2, got['ket_qua'][0])
+
+    def test_gon_rejects_unknown_flight(self):
+        """Dòng F không có trong checkpoint phải làm script chết, không im lặng bỏ chuyến."""
+        with tempfile.TemporaryDirectory() as d:
+            gon = os.path.join(d, 'gon.txt')
+            with open(gon, 'w', encoding='utf-8') as fh:
+                fh.write('# GON\t1\t1 chuyen\n'
+                         'F\t2026-11-14\tSGN\tDAD\tVJ 632\t20:10\t14/11/2026 08:00 (giờ VN)\tOK\t\tx\n'
+                         'B\tJettzy\tD\t679301\t\n# CON_LAI\t(het)\n# DUNG\t(khong)\n')
+            cp = os.path.join(d, 'cp.json')
+            with open(cp, 'w', encoding='utf-8') as fh:
+                json.dump(dict(caps=[dict(ten='c', ngay_di='14/11/2026', ngay_ve='15/11/2026',
+                                          di=dict(chuyen=[]), ve=dict(chuyen=[]))]), fh)
+            r = subprocess.run([sys.executable, os.path.join(SCRIPTS, 'gf_booking_gon.py'),
+                                gon, cp, os.path.join(d, 'o.json')],
+                               capture_output=True, text=True, timeout=60)
+            self.assertNotEqual(r.returncode, 0, r.stdout)
+            self.assertIn('VJ 632', r.stdout + r.stderr)
+            self.assertFalse(os.path.exists(os.path.join(d, 'o.json')))
+
+    def test_merge_rejects_gon_file_as_raw(self):
+        """Khai báo thẳng file gọn vào "xac_nhan" phải báo lỗi rõ, không vỡ ở json.load."""
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, 'x.txt'), 'w', encoding='utf-8') as fh:
+                fh.write('# GON\t1\t0 chuyen\n# CON_LAI\t(het)\n# DUNG\t(khong)\n')
+            sys.path.insert(0, SCRIPTS)
+            try:
+                import merge_sources
+                with self.assertRaises(SystemExit) as e:
+                    merge_sources.doc_xac_nhan({'xac_nhan': ['x.txt']}, d)
+            finally:
+                sys.path.remove(SCRIPTS)
+            self.assertIn('gf_booking_gon.py', str(e.exception))
 
 
 class TestTvlSanityOffline(unittest.TestCase):

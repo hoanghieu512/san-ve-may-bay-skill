@@ -244,6 +244,11 @@ def doc_xac_nhan(job, base):
     files = [files] if isinstance(files, str) else files
     kq, dung = {}, []
     for idx, path in enumerate(files):
+        with open(os.path.join(base, path), encoding='utf-8') as fh:
+            if fh.read(5) == '# GON':
+                sys.exit('LỖI: %s là kết quả gọn của gf_booking.js (GON = true), chưa phải file '
+                         'raw. Chạy: python3 scripts/gf_booking_gon.py %s <checkpoint.json> '
+                         '<file raw>.json rồi khai báo file raw ở "xac_nhan".' % (path, path))
         d = doc_json(base, path)
         if isinstance(d, str):                   # dán nguyên chuỗi JSON gf_booking trả về
             d = json.loads(d)
