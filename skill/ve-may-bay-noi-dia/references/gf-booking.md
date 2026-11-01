@@ -126,7 +126,9 @@ python3 scripts/gf_booking_gon.py gf_booking_gon.txt checkpoint.json gf_booking_
 
 Dòng `F` nào không tìm được trong checkpoint thì `gf_booking_gon.py` **thoát mã 1 và không ghi file**, kèm danh sách chuyến thiếu. Sai số hiệu hay sai ngày mà bỏ qua im lặng thì chuyến đó mất khỏi sheet Mua vé và không ai biết. Khai báo thẳng file `# GON` vào `xac_nhan` cũng bị merge chặn với thông báo chỉ đúng lệnh cần chạy.
 
-Cần JSON nguyên văn (ít chuyến, hoặc muốn bỏ hẳn bước chuyển): đặt `GON = false`, lưu ra `gf_booking_raw.json`, khai báo luôn. Hai đường cho ra **cùng một file**: `tests/gf_booking_offline.js` + `tests/test_scripts.py` chạy cùng một bộ chuyến hai lần rồi so từng khoá. Đã đối chiếu thêm trên dữ liệu thật của run 01/11/2026 (4 file, 67 chuyến, 335 dòng người bán): dựng dạng gọn từ raw rồi chuyển về, khớp từng khoá cả 4 file.
+Cần JSON nguyên văn (ít chuyến, hoặc muốn bỏ hẳn bước chuyển): đặt `GON = false`, lưu ra `gf_booking_raw.json`, khai báo luôn. Hai đường cho ra **cùng `ket_qua` và `dung`**, tức là mọi thứ merge đọc: `tests/gf_booking_offline.js` + `tests/test_scripts.py` chạy cùng một bộ chuyến hai lần rồi so từng khoá. Đã đối chiếu thêm trên dữ liệu thật của run 01/11/2026 (4 file, 67 chuyến, 335 dòng người bán): dựng dạng gọn từ raw rồi chuyển về, `ket_qua` khớp từng khoá cả 4 file, kể cả 67/67 link.
+
+Khác duy nhất là `con_lai`: đường JSON giữ nguyên các object (có url), đường gọn chỉ còn chỉ số ở `_con_lai_chi_so`. Merge không đọc `con_lai`, nên workbook không đổi; nhưng đọc file gọn về sau thì **không suy ra được chuyến nào còn treo**: chỉ số chỉ có nghĩa cùng với `FLIGHTS` của đúng call đó. Chuyến còn treo nằm ở file xác nhận lượt sau, nên dấu vết không mất, chỉ không nằm trong một file.
 
 | `trang_thai` | Khi nào | Merge làm gì |
 |---|---|---|

@@ -73,7 +73,7 @@ def doc_gon(text):
             if len(c) < 8:
                 sys.exit('LỖI dòng %d: F cần ít nhất 8 cột, có %d.' % (ln, len(c)))
             c += [''] * (10 - len(c))
-            cur = dict(ngay=c[1], tu=c[2], den=c[3], sh=c[4], dep=c[5], luc=c[6],
+            cur = dict(ngay=iso(c[1]), tu=c[2], den=c[3], sh=c[4], dep=c[5], luc=c[6],
                        trang_thai=c[7], ly_do=c[8], chuyen=c[9], ban=[], hanh_ly=[])
             ket_qua.append(cur)
             continue
@@ -87,10 +87,15 @@ def doc_gon(text):
                 sys.exit('LỖI dòng %d: B cần ít nhất 4 cột, có %d.' % (ln, len(c)))
             if c[2] not in ('H', 'D'):
                 sys.exit("LỖI dòng %d: loại người bán %r, phải là 'H' hoặc 'D'." % (ln, c[2]))
+            try:
+                gia = int(c[3]) if c[3].strip() else None
+            except ValueError:
+                sys.exit('LỖI dòng %d: giá %r không phải số nguyên. Cột giá là số trần, không '
+                         'dấu chấm, không chữ ₫; để trống nếu không đọc được giá.' % (ln, c[3]))
             cur['ban'].append(dict(
                 nguoi_ban=c[1],
                 loai='Hãng hàng không' if c[2] == 'H' else 'Đại lý',
-                gia=int(c[3]) if c[3].strip() else None,
+                gia=gia,
                 ghi_chu=c[4] if len(c) > 4 else ''))
         else:
             sys.exit('LỖI dòng %d: không hiểu loại dòng %r.' % (ln, c[0]))
@@ -125,7 +130,9 @@ def main(gon_path, cp_path, out_path):
     rows = [{k: r[k] for k in ('url', 'sh', 'dep', 'ngay', 'tu', 'den', 'luc', 'trang_thai',
                                'ly_do', 'chuyen', 'ban', 'hanh_ly')} for r in ket_qua]
     out = dict(ket_qua=rows, con_lai=[], dung=dung)
-    # merge_sources.py không đọc con_lai; giữ chỉ số lại làm bằng chứng của lượt chạy.
+    # merge_sources.py không đọc con_lai. Giữ chỉ số lại làm dấu vết của lượt chạy, nhưng
+    # nó chỉ có nghĩa cùng với danh sách FLIGHTS của đúng call đó: đọc file này về sau không
+    # suy ra được chuyến nào còn treo. Chuyến còn treo nằm ở file xác nhận lượt sau.
     if con_lai:
         out['_con_lai_chi_so'] = con_lai
     with open(out_path, 'w', encoding='utf-8') as fh:

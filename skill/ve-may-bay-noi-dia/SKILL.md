@@ -2,14 +2,14 @@
 name: ve-may-bay-noi-dia
 description: Thu thập và đối chiếu giá vé máy bay nội địa Việt Nam từ nhiều nguồn, rồi xuất file Excel so sánh. Use when người dùng muốn so sánh giá vé, tìm vé rẻ, quét giá nhiều ngày bay, dò giá khứ hồi, hoặc lập bảng so sánh chuyến bay — ví dụ "so giá vé SGN đi Đà Nẵng tháng 8", "tìm vé rẻ nhất HAN-SGN mấy cuối tuần tới", "quét giá vé máy bay giúp huynh", "compare flight prices Vietnam domestic", "check vé Tết". KHÔNG dùng cho chặng quốc tế (logic nối chuyến và hạng vé khác hẳn).
 metadata:
-  version: "1.6.0"
+  version: "1.6.1"
   updated: "2026-11-01"
   source: "https://github.com/hoanghieu512/san-ve-may-bay-skill"
 ---
 
 # Thu thập & so sánh giá vé nội địa VN
 
-**v1.6.0** · cập nhật 01/11/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
+**v1.6.1** · cập nhật 01/11/2026 · nguồn: `github.com/hoanghieu512/san-ve-may-bay-skill`
 
 Quét giá thật từ Google Flights / Traveloka, đối chiếu chéo, xác nhận nơi mua của các chuyến đề xuất, rồi xuất Excel 4 sheet. Đích cuối: người dùng mở file là biết **mua chuyến nào, ở người bán nào, giá bao nhiêu, bấm link nào**.
 
